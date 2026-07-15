@@ -1,0 +1,2056 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TRS Matrix v9.0 - Dynamic Bluetooth RDS Infotainment</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-main: #06090e;
+            --bg-panel: #0b0f17;
+            --bg-display: #010204;
+            --border-premium: #172237;
+            --premium-bronze: #c19a6b;
+            --neon-green: #10b981;
+            --neon-blue: #0ea5e9;
+            --text-main: #f1f5f9;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+
+        html, body {
+            height: 100%; width: 100%;
+        }
+
+        body { 
+            background: var(--bg-main); color: var(--text-main); min-height: 100dvh; height: 100vh; width: 100vw; margin: 0;
+            display: flex; align-items: stretch; justify-content: center; padding: 0;
+            background-image: radial-gradient(circle at 50% 10%, #111927 0%, var(--bg-main) 80%);
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        .infotainment-screen {
+            width: 100vw; max-width: 100vw; min-height: 100dvh; height: 100vh; background: var(--bg-panel);
+            border-radius: 0; border: 0; box-shadow: none;
+            overflow: hidden; display: flex; flex-direction: column;
+        }
+        .infotainment-screen.view-infotainment {
+            max-width: 100vw;
+            min-height: 100dvh;
+        }
+
+        .top-status-bar {
+            background: rgba(0,0,0,0.5); border-bottom: 1px solid var(--border-premium);
+            display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; font-size: 11px; font-weight: 700; color: #64748b;
+            flex-wrap: wrap; gap: 6px;
+        }
+        .top-status-bar span { color: var(--neon-blue); }
+
+        .main-layout { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            flex: 1; min-height: 0;
+            gap: 12px;
+            padding: 0 16px 16px;
+            min-height: calc(100vh - 52px);
+        }
+        
+        @media (min-width: 1024px) { 
+            .main-layout { grid-template-columns: minmax(380px, 420px) minmax(0, 1fr); }
+        }
+
+        .audio-panel { padding: 20px; border-bottom: 1px solid var(--border-premium); display: flex; flex-direction: column; gap: 18px; overflow-y: auto; background: rgba(3,8,18,0.9); border-radius: 24px; max-height: calc(100vh - 96px); min-height: 440px; }
+        .infotainment-screen.view-infotainment .audio-panel {
+            padding: 28px 30px;
+            gap: 18px;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            justify-content: center;
+            border-radius: 24px;
+        }
+        @media (min-width: 1024px) { .audio-panel { border-bottom: none; border-right: 1px solid var(--border-premium); padding: 24px; } }
+
+        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        .header-actions .power-btn { min-width: 120px; }
+
+        .media-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .media-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--premium-bronze); font-weight: 700; }
+
+        .power-btn {
+            background: #141b27; border: 1px solid var(--border-premium); color: #94a3b8;
+            padding: 12px 18px; font-size: 13px; font-weight: 700; border-radius: 30px; cursor: pointer;
+            text-transform: uppercase; transition: all 0.2s ease; white-space: nowrap; touch-action: manipulation;
+        }
+        .power-btn.on { background: rgba(16, 185, 129, 0.1); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 10px rgba(16, 185, 129, 0.2); }
+        .power-btn.mode-btn.active { background: rgba(14,165,233,0.12); border-color: var(--neon-blue); color: #7dd3fc; }
+        .small-btn { min-width: 90px; font-size: 11px; padding: 8px 12px; }
+        .rds-controls-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+        .rds-info-panel { margin-top: 10px; padding: 14px; background: rgba(15,23,42,0.92); border: 1px solid rgba(148,163,184,0.18); border-radius: 14px; font-size: 12px; color: #cbd5e1; line-height: 1.5; display: none; }
+        .rds-info-panel b { color: #38bdf8; }
+        .section-title { font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; color: #7dd3fc; margin-bottom: 6px; }
+        .tuning-row input[type="text"], .tuning-row select { width: 100%; background: rgba(15,23,42,0.95); border: 1px solid rgba(148,163,184,0.18); border-radius: 12px; padding: 10px 12px; color: #e2e8f0; font-size: 13px; }
+        .tuning-row input[type="text"]::placeholder { color: #64748b; }
+        .tuning-row select { appearance: none; cursor: pointer; }
+
+        .oled-display { background: var(--bg-display); border-radius: 16px; padding: 24px; border: 1px solid rgba(255,255,255,0.01); box-shadow: inset 0 4px 20px rgba(0,0,0,0.9); }
+        .rds-flags { display: flex; justify-content: space-between; font-size: 9px; font-weight: 800; color: #111827; letter-spacing: 0.5px; border-bottom: 1px solid #0b0f17; padding-bottom: 6px; margin-bottom: 10px; }
+        .flag.active { color: #475569; }
+        #flag-st.active { color: var(--neon-blue); text-shadow: 0 0 4px rgba(14,165,233,0.4); }
+
+        .af-status { background: #0b0f17; padding: 2px 6px; border-radius: 4px; color: #334155; }
+        .af-status.ok { color: var(--neon-green); background: rgba(16,185,129,0.08); }
+        .af-status.fading { color: #eab308; background: rgba(234,179,8,0.08); font-weight: bold; }
+        .af-status.searching { color: #eab308; background: rgba(234,179,8,0.08); animation: pulse 0.5s infinite; }
+        .af-status.saturated { color: #ef4444; background: rgba(239,68,68,0.1); font-weight: 900; }
+
+        .rds-ps { font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: clamp(34px, 5vw, 52px); font-weight: 700; color: #fff; margin: 6px 0; text-align: center; letter-spacing: 1px; min-height: 60px; }
+        .marquee-box { background: rgba(255,255,255,0.01); padding: 8px 10px; border-radius: 6px; overflow: hidden; white-space: nowrap; }
+        .rds-rt { display: inline-block; font-size: 13px; color: #94a3b8; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding-left: 100%; animation: marquee 12s linear infinite; }
+        .dab-metadata { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+        .dab-meta-item { background: rgba(15,23,42,0.75); border: 1px solid rgba(148,163,184,0.18); border-radius: 8px; padding: 6px 8px; }
+        .dab-meta-item span { display: block; font-size: 7px; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+        .dab-meta-item strong { font-size: 10px; color: #e2e8f0; }
+        .dab-service-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .dab-service-chip { background: rgba(8, 47, 73, 0.75); border: 1px solid rgba(56, 189, 248, 0.25); color: #bae6fd; border-radius: 999px; padding: 4px 8px; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .dab-service-chip.active { background: rgba(14, 165, 233, 0.2); border-color: #38bdf8; color: #f8fafc; }
+
+        .infotainment-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #05070a; padding: 4px; border-radius: 10px; gap: 4px; }
+        @media (min-width: 640px) { .infotainment-tabs { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); } }
+        .info-tab { background: transparent; border: none; color: #475569; padding: 10px 8px; font-size: 11px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; touch-action: manipulation; }
+        .info-tab:hover { color: #fff; background: rgba(23,34,55,0.7); }
+        .info-tab.active { background: #172237; color: #fff; box-shadow: inset 0 0 0 1px rgba(14,165,233,0.2); }
+
+        .station-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .coverage-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0 0; }
+        @media (min-width: 720px) { .coverage-details { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+        .coverage-card { background: rgba(8, 15, 28, 0.85); border: 1px solid rgba(148,163,184,0.16); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
+        .coverage-card::before { content:''; position:absolute; inset:0 auto 0 0; width:3px; background: linear-gradient(180deg, var(--neon-blue), transparent); opacity:0.6; }
+        .coverage-card span { font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.45px; }
+        .coverage-card strong { font-size: 15px; color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .tier-chip { display:inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: 0.4px; }
+        .tier-chip[data-tier="primaria"]   { background: rgba(34,197,94,0.14); color:#86efac; border:1px solid rgba(34,197,94,0.4); }
+        .tier-chip[data-tier="secundaria"] { background: rgba(234,179,8,0.14); color:#fde68a; border:1px solid rgba(234,179,8,0.4); }
+        .tier-chip[data-tier="franja"]     { background: rgba(251,146,60,0.14); color:#fdba74; border:1px solid rgba(251,146,60,0.45); }
+        .tier-chip[data-tier="marginal"]   { background: rgba(248,113,113,0.14); color:#fca5a5; border:1px solid rgba(248,113,113,0.4); }
+        .tier-chip[data-tier="fuera"]      { background: rgba(100,116,139,0.14); color:#94a3b8; border:1px solid rgba(100,116,139,0.4); }
+        .signal-history-panel { margin-top: 12px; background: rgba(2,8,20,0.7); border: 1px solid rgba(148,163,184,0.14); border-radius: 12px; padding: 10px 12px; }
+        .signal-history-header { display:flex; justify-content:space-between; align-items:center; font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+        .signal-history-header strong { color:#38bdf8; font-family:'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums; }
+        #signal-history-canvas { width:100%; height:70px; display:block; }
+        .link-budget-popup { font-family: 'Space Grotesk', sans-serif; font-size: 11px; min-width: 240px; }
+        .link-budget-popup h4 { font-size: 12px; margin: 0 0 6px; color:#0ea5e9; text-transform:uppercase; letter-spacing:0.5px; }
+        .link-budget-popup table { width:100%; border-collapse:collapse; }
+        .link-budget-popup td { padding: 2px 4px; border-bottom: 1px dashed rgba(148,163,184,0.15); }
+        .link-budget-popup td:last-child { text-align:right; font-weight:700; font-variant-numeric: tabular-nums; }
+
+        .chip { background: rgba(16, 185, 129, 0.12); color: #86efac; border: 1px solid rgba(16, 185, 129, 0.25); padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; display:inline-block; margin-right:4px; }
+        .chip.secondary { background: rgba(14,165,233,0.12); color: #7dd3fc; border-color: rgba(14,165,233,0.25); }
+
+        .ant-list-box { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+        .ant-item { background: #101622; padding: 12px; border-radius: 10px; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; font-size: 12px; transition: transform 0.15s ease, border-color 0.15s ease; }
+        .ant-item:hover { transform: translateX(2px); border-color: rgba(193,154,107,0.35); }
+        .ant-item.tuned { border-color: var(--neon-blue); background: linear-gradient(90deg, #0a192f 0%, #101622 100%); }
+        .history-section { margin-top: 12px; }
+        .history-log { background: rgba(8,12,22,0.9); border: 1px solid rgba(148,163,184,0.18); border-radius: 12px; padding: 10px; max-height: 120px; overflow-y: auto; font-size: 11px; color: #cbd5e1; line-height: 1.4; }
+        .antenna-tuning-panel { background: rgba(8, 15, 28, 0.92); border: 1px solid rgba(148,163,184,0.18); border-radius: 16px; padding: 12px; margin-top: 12px; display: grid; gap: 12px; }
+        .tuning-row { display: grid; gap: 6px; }
+        .tuning-row label { font-size: 10px; text-transform: uppercase; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+        .tuning-row input[type="range"] { width: 100%; }
+        .tuning-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .telemetry-panel { display: flex; flex-direction: column; background: rgba(2, 8, 20, 0.92); border-radius: 24px; border: 1px solid rgba(148,163,184,0.16); min-height: 0; flex: 1 1 auto; overflow: hidden; padding: 16px; }
+        .panel-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+        .panel-tab { flex: 1 1 0; background: rgba(15, 23, 43, 0.92); border: 1px solid rgba(148,163,184,0.16); border-radius: 999px; color: #94a3b8; padding: 12px 14px; font-size: 13px; font-weight: 700; cursor: pointer; text-align: center; transition: all 0.2s ease; }
+        .panel-tab.active { background: rgba(14,165,233,0.18); color: #f8fafc; border-color: #0ea5e9; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .map-panel { min-height: 620px; height: min(78vh, 760px); position: relative; margin-top: 16px; }
+        #map-container { width: 100%; height: 100%; min-height: 620px; border-radius: 18px; overflow: hidden; }
+        
+        .metrics-bar { 
+            padding: 12px; background: #080c13; border-bottom: 1px solid var(--border-premium); 
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; 
+        }
+        @media (min-width: 640px) { .metrics-bar { grid-template-columns: repeat(4, 1fr); padding: 15px; } }
+
+        .widget-card { display: flex; flex-direction: column; justify-content: center; border-left: 2px solid var(--border-premium); padding-left: 12px; }
+        .widget-card:first-child { border-left: none; }
+        .widget-label { font-size: 8px; text-transform: uppercase; color: #475569; font-weight: 700; letter-spacing: 0.5px; }
+        .widget-value { font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; font-weight: 700; color: #fff; margin-top: 2px; }
+        .widget-value span { font-size: 10px; color: var(--premium-bronze); }
+
+        .signal-meter-panel { margin: 14px 0 10px; }
+        .signal-meter-header { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.45px; margin-bottom: 6px; }
+        .signal-meter-track { width: 100%; height: 10px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; border: 1px solid rgba(148,163,184,0.16); }
+        .signal-meter-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #38bdf8); transition: width 0.2s ease, background 0.2s ease; }
+
+        .engineer-panel { margin-top: 12px; background: rgba(5,7,10,0.85); border-radius: 16px; border: 1px solid rgba(148,163,184,0.16); padding: 12px; }
+        .engineer-title { font-size: 10px; text-transform: uppercase; color: #38bdf8; letter-spacing: 0.7px; margin-bottom: 8px; }
+        .engineer-info { font-size: 11px; line-height: 1.5; color: #cbd5e1; }
+
+        .map-legend {
+            position: absolute; top: 12px; right: 12px; left: auto; z-index: 1000;
+            background: rgba(2, 6, 23, 0.86); border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 12px; padding: 10px 12px; min-width: 190px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            backdrop-filter: blur(6px);
+        }
+        .map-legend {
+            position: absolute; top: 12px; right: 12px; left: auto; z-index: 1000;
+            background: rgba(2, 6, 23, 0.86); border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 12px; padding: 10px 12px; min-width: 190px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            backdrop-filter: blur(6px);
+        }
+        .map-legend-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.7px; color: var(--premium-bronze); margin-bottom: 6px; }
+        .map-legend-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #e2e8f0; margin: 4px 0; }
+        .map-legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); display: inline-block; }
+        .map-legend-swatch.red { background: #ef4444; }
+        .map-legend-swatch.green { background: #22c55e; }
+        .map-legend-swatch.blue { background: #38bdf8; }
+        .map-legend-swatch.gray { background: #64748b; }
+        .system-status { font-size: 11px; text-align: center; color: #eab308; font-weight: 600; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; }
+
+        .eq-container { display: flex; gap: 3px; height: 20px; align-items: flex-end; width: 60px; justify-content: flex-end;}
+        .eq-bar { width: 4px; height: 2px; background: var(--premium-bronze); transition: height 0.05s ease; }
+
+        /* Estilos Control de Volumen */
+        .volume-container { display: flex; align-items: center; gap: 10px; background: #101622; padding: 10px 15px; border-radius: 10px; border: 1px solid var(--border-premium); }
+        .volume-slider { flex-grow: 1; -webkit-appearance: none; appearance: none; background: #172237; height: 6px; border-radius: 3px; outline: none; }
+
+        .station-list-infotainment { display: none; margin-top: 12px; }
+        .station-list-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--premium-bronze); font-weight: 700; margin-bottom: 8px; }
+        .station-list-grid { display: grid; gap: 8px; }
+        .station-list-item { width: 100%; text-align: left; background: #101622; border: 1px solid var(--border-premium); color: #f8fafc; padding: 12px 14px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+        .station-list-item:hover { border-color: rgba(193,154,107,0.35); transform: translateX(2px); }
+        .station-list-item.active { background: rgba(14,165,233,0.12); border-color: var(--neon-blue); color: #7dd3fc; }
+
+        .dab-section { margin-top: 12px; padding: 12px; border: 1px solid var(--border-premium); border-radius: 12px; background: rgba(5,7,10,0.7); }
+        .dab-service-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dab-service-btn { width: 100%; background: #101622; color: #f8fafc; border: 1px solid var(--border-premium); border-radius: 10px; padding: 10px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+        .dab-service-btn:hover { border-color: rgba(193,154,107,0.35); transform: translateX(2px); }
+        .dab-service-btn.active { background: rgba(16,185,129,0.12); border-color: var(--neon-green); color: #86efac; }
+
+        .infotainment-screen.view-infotainment .telemetry-panel { display: none; }
+        .infotainment-screen.view-infotainment .repetidor-section { display: none; }
+        .infotainment-screen.view-infotainment .station-list-infotainment { display: block; }
+        .infotainment-screen.view-infotainment .audio-panel { border-right: none; }
+        .infotainment-screen.view-infotainment .main-layout { grid-template-columns: 1fr; }
+        .infotainment-screen.view-infotainment .infotainment-tabs { display: none; }
+        .infotainment-screen.view-infotainment .station-summary { display: flex; }
+        .infotainment-screen.view-infotainment .volume-container { display: none; }
+        .infotainment-screen.view-infotainment .oled-display {
+            padding: 36px 32px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            min-height: 320px;
+        }
+        .infotainment-screen.view-infotainment .rds-ps { font-size: clamp(56px, 7vw, 96px); min-height: 110px; }
+        .infotainment-screen.view-infotainment .rds-rt { font-size: 18px; }
+        .infotainment-screen.view-infotainment .station-list-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .infotainment-screen.view-infotainment .station-list-item { padding: 16px 18px; font-size: 16px; min-height: 68px; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .infotainment-screen.view-infotainment .media-header { justify-content: center; }
+        .infotainment-screen.view-infotainment .media-title { display: none; }
+        .infotainment-screen.view-infotainment .top-status-bar { padding: 14px 24px; }
+        .volume-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--premium-bronze); cursor: pointer; transition: transform 0.1s; }
+        .volume-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        @media (max-width: 768px) {
+            body { padding: 0; }
+            .infotainment-screen { border: none; }
+            .media-header { align-items: stretch; }
+            .power-btn { width: 100%; }
+            .volume-container { flex-wrap: wrap; }
+            .widget-card { padding-left: 10px; }
+        }
+
+        @media (min-width: 1024px) {
+            body { padding: 0; }
+            .infotainment-screen { min-height: 100dvh; border-radius: 0; }
+        }
+
+        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        @keyframes pulse { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <div class="infotainment-screen">
+        <div class="top-status-bar">
+            <div>HW SYNC: <span id="gps-lock">BUSCANDO SEÑAL GPS...</span></div>
+            <div id="rds-clock">CT SYNC: --:--:--</div>
+            <div id="gps-coords">LAT: --.---- | LON: --.----</div>
+        </div>
+
+        <div class="main-layout">
+            <div class="audio-panel">
+                <div class="media-header">
+                    <div class="media-title">Receptor Inteligente Móvil/PC v9.2</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                        <button id="btn-fm" class="power-btn mode-btn active" onclick="activarModoReceptor('FM')">📻 FM</button>
+                        <button id="btn-dab" class="power-btn mode-btn" onclick="activarModoReceptor('DAB')">📡 DAB+</button>
+                        <button id="btn-infotainment" class="power-btn mode-btn" onclick="activarModoInfotainment()">📺 Infotainment</button>
+                        <button id="btn-panel" class="power-btn mode-btn active" onclick="activarModoPanel()">🧭 Panel</button>
+                        <button id="btn-centro" class="power-btn" onclick="centrarMapa()" style="padding: 10px 14px;">⤾ Centrar</button>
+                        <button id="btn-encender" class="power-btn" onclick="encenderRadio()">🔘 Encender</button>
+                    </div>
+                </div>
+
+                <div class="coverage-details">
+                    <div class="coverage-card">
+                        <span>Alcance efectivo (E≥54 dBμV/m)</span>
+                        <strong id="alcance-max">-- km</strong>
+                    </div>
+                    <div class="coverage-card">
+                        <span>Potencia / altura best-server</span>
+                        <strong id="alcance-meta">-- W · -- m</strong>
+                    </div>
+                    <div class="coverage-card">
+                        <span>Campo eléctrico (mi posición)</span>
+                        <strong id="lbl-efield">-- dBμV/m</strong>
+                    </div>
+                    <div class="coverage-card">
+                        <span>SNR estimada</span>
+                        <strong id="lbl-snr">-- dB</strong>
+                    </div>
+                    <div class="coverage-card">
+                        <span>Clase de cobertura</span>
+                        <strong id="lbl-clase"><span class="tier-chip" data-tier="fuera">Fuera</span></strong>
+                    </div>
+                    <div class="coverage-card">
+                        <span>Best-server / handover</span>
+                        <strong id="lbl-bestserver">--</strong>
+                    </div>
+                    <div class="coverage-card">
+                        <span>Zona de Fresnel</span>
+                        <strong id="lbl-fresnel">-- %</strong>
+                    </div>
+                    <div class="coverage-card">
+                        <span>Área cubierta / horizonte</span>
+                        <strong id="lbl-area">-- km²</strong>
+                    </div>
+                </div>
+
+                <div class="signal-history-panel">
+                    <div class="signal-history-header">
+                        <span>Histórico RSSI · 30 s</span>
+                        <strong id="lbl-rssi-live">-- dBm</strong>
+                    </div>
+                    <canvas id="signal-history-canvas" width="600" height="70"></canvas>
+                </div>
+
+
+                <div class="panel-tabs">
+                    <button id="tab-btn-estacion" class="panel-tab active" onclick="activarPestanaPanel('estacion')">Estación</button>
+                    <button id="tab-btn-cobertura" class="panel-tab" onclick="activarPestanaPanel('cobertura')">Cobertura</button>
+                    <button id="tab-btn-ajustes" class="panel-tab" onclick="activarPestanaPanel('ajustes')">Ajustes</button>
+                </div>
+
+                <div id="panel-estacion" class="tab-pane active">
+                    <div class="infotainment-tabs">
+                        <button id="tab-nexofm" class="info-tab active" onclick="seleccionarEmisora('NEXOFM','FM')">NEXO FM</button>
+                        <button id="tab-trs1" class="info-tab" onclick="seleccionarEmisora('TRS1','FM')">TRS1 FM</button>
+                        <button id="tab-megastarfm" class="info-tab" onclick="seleccionarEmisora('MEGASTARFM','FM')">MEGASTAR FM</button>
+                        <button id="tab-hitfm" class="info-tab" onclick="seleccionarEmisora('HITFM','FM')">HIT FM</button>
+                        <button id="tab-cantabriarock" class="info-tab" onclick="seleccionarEmisora('CANTABRIAROCK','FM')">CANTABRIA ROCK</button>
+                        <button id="tab-ondasur" class="info-tab" onclick="seleccionarEmisora('ONDASUR','FM')">ONDA SUR</button>
+                        <button id="tab-nortefm" class="info-tab" onclick="seleccionarEmisora('NORTEFM','FM')">NORTE FM</button>
+                    </div>
+
+                    <div id="dab-section" class="dab-section">
+                        <div class="station-list-title">DAB+ disponible</div>
+                        <div class="dab-service-grid">
+                            <button class="dab-service-btn" data-emisora="DABCANTABRIA" onclick="seleccionarEmisora('DABCANTABRIA','DAB')">Cantabria DAB+</button>
+                            <button class="dab-service-btn" data-emisora="DABBURGOS" onclick="seleccionarEmisora('DABBURGOS','DAB')">Burgos DAB+</button>
+                            <button class="dab-service-btn" data-emisora="DABALAVA" onclick="seleccionarEmisora('DABALAVA','DAB')">Álava DAB+</button>
+                        </div>
+                    </div>
+
+                    <div id="station-summary" class="station-summary"></div>
+
+                    <div class="oled-display">
+                        <div class="rds-flags">
+                            <div>
+                                <span class="flag active">TP</span> &nbsp;&nbsp;
+                                <span class="flag active">TA</span> &nbsp;&nbsp;
+                                <span class="flag" id="flag-st">ST</span>
+                            </div>
+                            <div id="rds-af-status" class="af-status">AF OFF</div>
+                        </div>
+                        <div id="rds-ps-display" class="rds-ps">OFFLINE</div>
+                        <div class="marquee-box">
+                            <div id="rds-rt-display" class="rds-rt">Radio apagada. Pulse encender.</div>
+                        </div>
+                        <div class="rds-controls-row">
+                            <button class="power-btn small-btn" onclick="toggleRdsInfo()">RDS INFO</button>
+                        </div>
+                        <div id="rds-info-panel" class="rds-info-panel">
+                            <div class="section-title">RDS Detallado</div>
+                            <div><b>PI:</b> <span id="rds-info-pi">----</span></div>
+                            <div><b>PS:</b> <span id="rds-info-ps">----</span></div>
+                            <div><b>RT:</b> <span id="rds-info-rt">----</span></div>
+                            <div><b>TP:</b> <span id="rds-info-tp">--</span></div>
+                            <div><b>TA:</b> <span id="rds-info-ta">--</span></div>
+                        </div>
+                        <div id="dab-metadata" class="dab-metadata" style="display: none;">
+                            <div class="dab-meta-item"><span>Ensamble</span><strong id="dab-ensemble">--</strong></div>
+                            <div class="dab-meta-item"><span>MUX</span><strong id="dab-mux">--</strong></div>
+                            <div class="dab-meta-item"><span>Servicio</span><strong id="dab-service">--</strong></div>
+                            <div class="dab-meta-item"><span>Bitrate</span><strong id="dab-bitrate">--</strong></div>
+                            <div class="dab-meta-item"><span>FEC</span><strong id="dab-fec">--</strong></div>
+                            <div class="dab-meta-item"><span>Modo</span><strong id="dab-mode">--</strong></div>
+                        </div>
+                        <div id="dab-service-selector" class="dab-service-selector" style="display: none;"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                            <div id="pty-display" style="font-size: 8px; color: #334155; font-weight: bold; letter-spacing: 0.5px;">Receptor Digital Simulada de FM (TDSFM)</div>
+                            <div class="eq-container" id="eq-visual">
+                                <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="station-list-infotainment" id="station-list-infotainment">
+                        <div class="station-list-title">Emisoras disponibles</div>
+                        <div class="station-list-grid">
+                            <button class="station-list-item" data-station="NEXOFM" onclick="seleccionarEmisora('NEXOFM')">NEXO FM</button>
+                            <button class="station-list-item" data-station="TRS1" onclick="seleccionarEmisora('TRS1')">TRS1 FM</button>
+                            <button class="station-list-item" data-station="MEGASTARFM" onclick="seleccionarEmisora('MEGASTARFM')">MEGASTAR FM</button>
+                            <button class="station-list-item" data-station="HITFM" onclick="seleccionarEmisora('HITFM')">HIT FM</button>
+                            <button class="station-list-item" data-station="CANTABRIAROCK" onclick="seleccionarEmisora('CANTABRIAROCK')">CANTABRIA ROCK</button>
+                            <button class="station-list-item" data-station="ONDASUR" onclick="seleccionarEmisora('ONDASUR')">ONDA SUR</button>
+                            <button class="station-list-item" data-station="NORTEFM" onclick="seleccionarEmisora('NORTEFM')">NORTE FM</button>
+                        </div>
+                    </div>
+
+                    <div class="volume-container">
+                        <span style="font-size: 11px; font-weight: bold; color: #64748b;">VOL</span>
+                        <input type="range" id="volume-master" class="volume-slider" min="0" max="1" step="0.05" value="0.7">
+                        <span id="volume-value" style="font-size: 11px; font-weight: bold; color: var(--premium-bronze); width: 25px; text-align: right;">70%</span>
+                    </div>
+                </div>
+
+                <div id="panel-cobertura" class="tab-pane">
+                    <div class="repetidor-section">
+                        <div class="media-title" style="margin-top: 2px;">Red de Repetidores Activos</div>
+                        <div class="ant-list-box" id="lista-antenas-ui"></div>
+                    </div>
+                    <div class="history-section">
+                        <div class="media-title" style="margin-top: 2px;">Historial de Conmutaciones</div>
+                        <div id="antenna-history" class="history-log">No hay cambios aún.</div>
+                    </div>
+                    <div id="status" class="system-status">SISTEMA INICIALIZADO</div>
+                </div>
+
+                <div id="panel-ajustes" class="tab-pane">
+                    <div class="antenna-tuning-panel">
+                        <div class="tuning-row">
+                            <label for="select-antenna-manual">Antena manual</label>
+                            <select id="select-antenna-manual" onchange="seleccionarAntenaManual(this.value)"></select>
+                        </div>
+                        <div class="tuning-row">
+                            <label>Altura (m) <span id="label-altura">--</span></label>
+                            <input type="range" id="slider-altura" min="10" max="250" step="1" value="80" />
+                        </div>
+                        <div class="tuning-row">
+                            <label>Potencia (W) <span id="label-potencia">--</span></label>
+                            <input type="range" id="slider-potencia" min="10" max="100000" step="100" value="1000" />
+                        </div>
+                        <div class="tuning-row">
+                            <label>Ganancia (dB) <span id="label-ganancia">--</span></label>
+                            <input type="range" id="slider-ganancia" min="0" max="16" step="0.1" value="6" />
+                        </div>
+                        <div class="section-title">Ajustes RDS</div>
+                        <div class="tuning-row">
+                            <label for="input-rds-pi">PI</label>
+                            <input type="text" id="input-rds-pi" placeholder="E2FA" />
+                        </div>
+                        <div class="tuning-row">
+                            <label for="input-rds-ps">PS</label>
+                            <input type="text" id="input-rds-ps" placeholder="NEXO FM" />
+                        </div>
+                        <div class="tuning-row">
+                            <label for="input-rds-rt">RT</label>
+                            <input type="text" id="input-rds-rt" placeholder="NEXO FM CANTABRIA" />
+                        </div>
+                        <div class="tuning-row" style="display:flex; gap:10px; align-items:center;">
+                            <label style="flex:1;">TP / TA</label>
+                            <div style="display:flex; gap:8px;">
+                                <button id="btn-rds-tp" class="power-btn small-btn" onclick="toggleRdsFlag('tp')">TP</button>
+                                <button id="btn-rds-ta" class="power-btn small-btn" onclick="toggleRdsFlag('ta')">TA</button>
+                            </div>
+                        </div>
+                        <div class="tuning-actions">
+                            <button id="btn-engineer-mode" class="power-btn mode-btn" onclick="toggleEngineerMode()">👷 Modo Engineer</button>
+                            <button id="btn-autoaf" class="power-btn mode-btn active" onclick="toggleAutoAF()">⚡ Auto AF</button>
+                            <button class="power-btn small-btn" onclick="aplicarAjustesAvanzados()">Aplicar Ajustes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="telemetry-panel">
+                <div class="metrics-bar">
+                    <div class="widget-card">
+                        <div class="widget-label">Frecuencia Activa</div>
+                        <div id="lbl-dial" class="widget-value">---<span>MHz</span></div>
+                    </div>
+                    <div class="widget-card">
+                        <div class="widget-label">Señal Neta (RSSI)</div>
+                        <div id="lbl-rssi" class="widget-value">---<span>dBm</span></div>
+                    </div>
+                    <div class="widget-card">
+                        <div class="widget-label">Nodo Emisor</div>
+                        <div id="lbl-lugar" class="widget-value" style="font-size:11px; color:var(--premium-bronze); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">---</div>
+                    </div>
+                    <div class="widget-card">
+                        <div class="widget-label">Estado Receptor</div>
+                        <div id="lbl-receptor-state" class="widget-value">---</div>
+                    </div>
+                    <div class="widget-card">
+                        <div class="widget-label">Distancia Radial</div>
+                        <div id="lbl-distancia" class="widget-value">---<span>km</span></div>
+                    </div>
+                </div>
+
+                <div class="signal-meter-panel">
+                    <div class="signal-meter-header">
+                        <span>RSSI</span>
+                        <strong id="signal-value">-- dBm</strong>
+                    </div>
+                    <div class="signal-meter-track"><div id="signal-meter-fill" class="signal-meter-fill"></div></div>
+                </div>
+
+                <div id="engineer-panel" class="engineer-panel" style="display:none;">
+                    <div class="engineer-title">Modo Engineer · Datos técnicos</div>
+                    <div id="engineer-info" class="engineer-info">No disponible</div>
+                </div>
+
+                <div class="map-panel">
+                    <div id="map-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="musica" crossorigin="anonymous" preload="auto"></audio>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        const musica = document.getElementById('musica');
+        const btnEncender = document.getElementById('btn-encender');
+        const sliderVolumen = document.getElementById('volume-master');
+        const txtVolumen = document.getElementById('volume-value');
+        const eqBars = document.querySelectorAll('.eq-bar');
+
+        let emisoraActual = "NEXOFM"; 
+        let antenaSintonizada = null;
+        let conmutandoAF = false;
+        let radioEncendida = false;
+        let psInterval = null;
+        let clockInterval = null;
+
+        let map = null;
+        let cocheMarker = null;
+        let marcadoresAntenas = [];
+        let circulosCobertura = [];
+        let lineasMatrizRF = [];
+        let watchGpsId = null;
+
+        let coordenadasCoche = { lat: 42.4500, lon: -3.4000 }; 
+        let modoVista = 'panel';
+        let modoReceptor = 'FM';
+        let servicioDabActual = null;
+        let modoEngineer = false;
+        let autoAF = true;
+        let historialConmutaciones = [];
+
+        // Pipeline Web Audio API Avanzado
+        let audioCtx = null;
+        let fuenteAudio = null;
+        let noiseNode = null;
+        let noiseGain = null;
+        let masterGain = null;
+        let biquadFilter = null;
+        let stereoPanner = null;
+        let analyser = null;
+        let dataArray = [];
+        let animationEqId = null;
+
+        const baseDatosEmisoras = {
+            "NEXOFM": {
+                pty: "PTY: POP MUSIC",
+                streamUrl: "https://stream.zeno.fm/rub12huqwj7tv",
+                antenas: [
+                    { id: 1, nombre: "Cantabria Peña Cabarga", subnodo: "Santander", lat: 43.3644, lon: -3.8119, alturaM: 40, potenciaW: 6000, gananciaDb: 12, dial: "90.2 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM CANTABRIA", tipo: "repetidor", polarizacion: "V", apertura: "360º", eficiencia: 1.06, factorMultitrayecto: 0.25, perdidaTerreno: 1.1, perdidaUrbana: 0.8, perdidaMontaña: 0.2 },
+                    { id: 2, nombre: "Cantabria Sur Reinosa", subnodo: "Reinosa", lat: 43.01519671711441, lon: -4.255519438698781, alturaM: 20, potenciaW: 75, gananciaDb: 5, dial: "93.4 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM CANTABRIA", tipo: "omni", polarizacion: "H", apertura: "90°", eficiencia: 1.02, factorMultitrayecto: 0.45, perdidaTerreno: 1.3, perdidaUrbana: 0.1, perdidaMontaña: 3.5 },
+                    { id: 3, nombre: "Burgos", subnodo: "Burgos", lat: 42.3834, lon: -3.5536, alturaM: 150, potenciaW: 10000, gananciaDb: 12, dial: "98.8 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM BURGOS", tipo: "omni", polarizacion: "V", apertura: "60º", eficiencia: 2, factorMultitrayecto: 0.35, perdidaTerreno: 0.1, perdidaUrbana: 0.2, perdidaMontaña: 0.1 },
+                    { id: 4, nombre: "Álava / Condado de Treviño", subnodo: "Alava/Treviño", lat: 42.7231, lon: -2.7486, alturaM: 80, potenciaW: 20000, gananciaDb: 12, dial: "101.3 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM Alava/Treviño", tipo: "omni", polarizacion: "V", apertura: "60°", eficiencia: 1.04, factorMultitrayecto: 0.4, perdidaTerreno: 1.2, perdidaUrbana: 1.0, perdidaMontaña: 3.5 },
+                    { id: 5, nombre: "Palencia Aguilar de Campoo", subnodo: "Aguilar", lat: 42.7933, lon: -4.2612, alturaM: 20, potenciaW: 420, gananciaDb: 2.15, dial: "106.1 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM AGUILAR DE CAMPOO", tipo: "onmi", polarizacion: "V", apertura: "120°", eficiencia: 50, factorMultitrayecto: 0, perdidaTerreno: 1, perdidaUrbana: 0, perdidaMontaña: 0.3 },
+                    { id: 6, nombre: "Bilbao", subnodo: "Bilbao", lat: 43.2312, lon: -3.0527, alturaM: 160, potenciaW: 50000, gananciaDb: 8.5, dial: "107.7 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM BILBAO", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.07, factorMultitrayecto: 0.3, perdidaTerreno: 1.0, perdidaUrbana: 0.7, perdidaMontaña: 1.6 },
+                    { id: 7, nombre: "Madrid Este", subnodo: "MADRID", lat: 40.4531, lon: -3.6230, alturaM: 180, potenciaW: 80000, gananciaDb: 9.1, dial: "90.2 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM MADRID", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.1, factorMultitrayecto: 0.22, perdidaTerreno: 0.9, perdidaUrbana: 0.8, perdidaMontaña: 1.4 },
+                    { id: 8, nombre: "Valladolid", subnodo: "VALLADOLID", lat: 41.6523, lon: -4.7245, alturaM: 110, potenciaW: 45000, gananciaDb: 8.7, dial: "90.2 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM VALLADOLID", tipo: "repetidor", polarizacion: "H", apertura: "omni", eficiencia: 1.08, factorMultitrayecto: 0.26, perdidaTerreno: 1.1, perdidaUrbana: 0.9, perdidaMontaña: 1.5 },
+                    { id: 9, nombre: "Zaragoza", subnodo: "ZARAGOZA", lat: 41.6561, lon: -0.8773, alturaM: 130, potenciaW: 60000, gananciaDb: 8.9, dial: "90.2 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM ZARAGOZA", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.09, factorMultitrayecto: 0.25, perdidaTerreno: 1.0, perdidaUrbana: 0.8, perdidaMontaña: 1.3 },
+                    { id: 12, nombre: "A-8", subnodo: "A-67", lat: 42.630014610428944, lon: -3.1116527803469483, alturaM: 27, potenciaW: 10000, gananciaDb: 12, dial: "98.8 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM BURGOS", tipo: "omni", polarizacion: "V", apertura: "60º", eficiencia: 2, factorMultitrayecto: 0.35, perdidaTerreno: 0.1, perdidaUrbana: 0.2, perdidaMontaña: 0.1 },
+                    { id: 13, nombre: "A-67", subnodo: "Burgos", lat: 42.676071144420106,  lon: -3.9343524938956587, alturaM: 27, potenciaW: 10000, gananciaDb: 12, dial: "98.8 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM BURGOS", tipo: "omni", polarizacion: "V", apertura: "60º", eficiencia: 2, factorMultitrayecto: 0.35, perdidaTerreno: 0.1, perdidaUrbana: 0.2, perdidaMontaña: 0.1 }, 
+                    { id: 14, nombre: "Cantabria Peña Cabarga", subnodo: "Santander", lat: 43.34288846936196,lon: -4.05230165737501, alturaM: 40, potenciaW: 6000, gananciaDb: 12, dial: "90.2 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM CANTABRIA", tipo: "direccional", polarizacion: "V", apertura: "0", eficiencia: 5, factorMultitrayecto: 0.25, perdidaTerreno: 1.0, perdidaUrbana: 0.8, perdidaMontaña: 0.2 },
+                     { id: 15, nombre: "Cantabria Sur Reinosa", subnodo: "Reinosa", lat: 42.99780194776049,lon:-4.137488380698894, alturaM: 20, potenciaW: 75, gananciaDb: 5, dial: "93.4 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM CANTABRIA", tipo: "omni", polarizacion: "H", apertura: "90°", eficiencia: 1.02, factorMultitrayecto: 0.45, perdidaTerreno: 1.3, perdidaUrbana: 0.1, perdidaMontaña: 1.5 },
+                    { id: 14, nombre: "Cantabria Peña Cabarga", subnodo: "Santander", lat: 43.1520244706263, lon:-4.049778032103211, alturaM: 40, potenciaW: 100, gananciaDb: 12, dial: "90.2 MHz", pi: "ADAF", ps: "NEXO FM", rt: "NEXO FM CANTABRIA", tipo: "direccional", polarizacion: "V", apertura: "0", eficiencia: 5, factorMultitrayecto: 0.25, perdidaTerreno: 1.0, perdidaUrbana: 0.8, perdidaMontaña: 0.2 },
+                ]
+            },
+            "TRS1": {
+                pty: "PTY: ROCK MUSIC",
+                streamUrl: "https://stream.zeno.fm/ohpbtx1plq6uv",
+                antenas: [
+                    { id: 10, nombre: "Santander Ciudad", subnodo: "SANTANDER", lat: 43.4623, lon: -3.8099, alturaM: 95, potenciaW: 300, gananciaDb: 7, dial: "91.1 MHz", pi: "F441", rt: "TRS1 ROCK", tipo: "sectorial", polarizacion: "V", apertura: "90°", eficiencia: 1.03, factorMultitrayecto: 0.4, perdidaTerreno: 1.2, perdidaUrbana: 1.0, perdidaMontaña: 1.9 },
+                    { id: 11, nombre: "Palencia (Aguilar de Campoo)", subnodo: "AGUILAR", lat: 42.7933, lon: -4.2612, alturaM: 110, potenciaW: 350, gananciaDb: 7.5, dial: "102.5 MHz", pi: "F441", rt: "TRS1 PALENCIA", tipo: "direccional", polarizacion: "H", apertura: "120°", eficiencia: 1.02, factorMultitrayecto: 0.48, perdidaTerreno: 1.4, perdidaUrbana: 1.1, perdidaMontaña: 2.2 }
+                ]
+            },
+            "MEGASTARFM": {
+                pty: "PTY: VARIED",
+                streamUrl: "https://megastar-cope-rrcast.flumotion.com/cope/megastar-low.mp3",
+                antenas: [
+                    { id: 20, nombre: "Madrid Centro", subnodo: "MADRID", lat: 40.4205, lon: -3.6642, alturaM: 150, potenciaW: 50000, gananciaDb: 8.6, dial: "88.3 MHz", pi: "A1S1", rt: "MEGASTAR FM", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.09, factorMultitrayecto: 0.23, perdidaTerreno: 1.0, perdidaUrbana: 0.9, perdidaMontaña: 1.7 },
+                    { id: 12, nombre: "Santander Centro", subnodo: "SANTANDER", lat: 43.4623, lon: -3.8099, alturaM: 35, potenciaW: 20000, gananciaDb: 7.5, dial: "88.3 MHz", pi: "A1S1", rt: "MEGASTAR FM", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.09, factorMultitrayecto: 0.24, perdidaTerreno: 1.0, perdidaUrbana: 0.8, perdidaMontaña: 1.6 },
+                    { id: 17, nombre: "Burgos Centro", subnodo: "BURGOS", lat: 42.3834, lon: -3.5536, alturaM: 27, potenciaW: 6000, gananciaDb: 7.6, dial: "88.3 MHz", pi: "A1S1", rt: "MEGASTAR FM", tipo: "sectorial", polarizacion: "V", apertura: "60°", eficiencia: 1.05, factorMultitrayecto: 0.39, perdidaTerreno: 1.2, perdidaUrbana: 0.9, perdidaMontaña: 1.9 },
+                    { id: 19, nombre: "Álava / Condado de Treviño", subnodo: "ALAVA/TREVIÑO", lat: 42.7231, lon: -2.7486, alturaM: 90, potenciaW: 8000, gananciaDb: 7.4, dial: "88.3 MHz", pi: "A1S1", rt: "MEGASTAR FM", tipo: "repetidor", polarizacion: "H", apertura: "omni", eficiencia: 1.06, factorMultitrayecto: 0.31, perdidaTerreno: 1.1, perdidaUrbana: 1.0, perdidaMontaña: 2.0 }
+                ]
+            },
+            "HITFM": {
+                pty: "PTY: POP MUSIC",
+                streamUrl: "https://hitfm.kissfmradio.cires21.com/hitfm.mp3",
+                antenas: [
+                    { id: 13, nombre: "Burgos Centro", subnodo: "BURGOS", lat: 42.3439, lon: -3.7018, alturaM: 125, potenciaW: 360, gananciaDb: 7.8, dial: "89.7 MHz", pi: "B2G1", rt: "HIT FM", tipo: "sectorial", polarizacion: "V", apertura: "90°", eficiencia: 1.04, factorMultitrayecto: 0.37, perdidaTerreno: 1.1, perdidaUrbana: 0.9, perdidaMontaña: 1.7 },
+                    { id: 18, nombre: "Santander Centro", subnodo: "SANTANDER", lat: 43.4623, lon: -3.8099, alturaM: 110, potenciaW: 340, gananciaDb: 7.6, dial: "89.7 MHz", pi: "B2G1", rt: "HIT FM", tipo: "sectorial", polarizacion: "H", apertura: "60°", eficiencia: 1.03, factorMultitrayecto: 0.36, perdidaTerreno: 1.0, perdidaUrbana: 0.8, perdidaMontaña: 1.8 }
+                ]
+            },
+            "CANTABRIAROCK": {
+                pty: "PTY: ROCK MUSIC",
+                streamUrl: "https://stream.zeno.fm/9x2k8r3v8qzuv",
+                antenas: [
+                    { id: 14, nombre: "Santander Norte", subnodo: "SANTANDER", lat: 43.4788, lon: -3.8040, alturaM: 105, potenciaW: 280, gananciaDb: 7.2, dial: "92.6 MHz", pi: "C3R1", rt: "CANTABRIA ROCK", tipo: "direccional", polarizacion: "V", apertura: "120°", eficiencia: 1.02, factorMultitrayecto: 0.43, perdidaTerreno: 1.3, perdidaUrbana: 1.0, perdidaMontaña: 2.0 }
+                ]
+            },
+            "ONDASUR": {
+                pty: "PTY: CULTURE",
+                streamUrl: "https://stream.zeno.fm/7d3k1b7m4p8uv",
+                antenas: [
+                    { id: 15, nombre: "Burgos Sur", subnodo: "BURGOS", lat: 42.3300, lon: -3.6800, alturaM: 115, potenciaW: 310, gananciaDb: 7.3, dial: "94.1 MHz", pi: "O4S1", rt: "ONDA SUR", tipo: "sectorial", polarizacion: "H", apertura: "90°", eficiencia: 1.03, factorMultitrayecto: 0.41, perdidaTerreno: 1.2, perdidaUrbana: 1.0, perdidaMontaña: 1.8 }
+                ]
+            },
+            "NORTEFM": {
+                pty: "PTY: CLASSIC ROCK",
+                streamUrl: "https://stream.zeno.fm/5z0g1k6f2qzuv",
+                antenas: [
+                    { id: 16, nombre: "Santander Este", subnodo: "SANTANDER", lat: 43.4550, lon: -3.7900, alturaM: 100, potenciaW: 290, gananciaDb: 7.1, dial: "96.4 MHz", pi: "N5F1", rt: "NORTE FM", tipo: "direccional", polarizacion: "V", apertura: "120°", eficiencia: 1.02, factorMultitrayecto: 0.38, perdidaTerreno: 1.1, perdidaUrbana: 0.9, perdidaMontaña: 1.9 }
+                ]
+            }
+        };
+
+        const baseDatosDAB = {
+            "DABCANTABRIA": {
+                pty: "PTY: DIGITAL",
+                streamUrl: "https://stream.zeno.fm/8xq1kg8p3f8uv",
+                antenas: [
+                    { id: 101, nombre: "Santander DAB+", subnodo: "SANTANDER", lat: 43.4623, lon: -3.8099, alturaM: 145, potenciaW: 520, gananciaDb: 8.2, dial: "12B", pi: "D1C1", rt: "CANTABRIA DAB+", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.05, factorMultitrayecto: 0.18, perdidaTerreno: 1.4, perdidaUrbana: 1.1, perdidaMontaña: 2.2, mux: "M1", ensemble: "ENSEMBLE 1", servicio: "CANTABRIA DAB+", bitrate: "128 kbps", fec: "FEC 3/4", mode: "DAB+", emisoras: [{ nombre: "Cantabria DAB+", rt: "CANTABRIA DAB+", bitrate: "128 kbps", fec: "FEC 3/4", mode: "DAB+" }, { nombre: "Cantabria Info", rt: "CANTABRIA INFO", bitrate: "96 kbps", fec: "FEC 1/2", mode: "DAB+" }, { nombre: "Cantabria Clásica", rt: "CANTABRIA CLÁSICA", bitrate: "112 kbps", fec: "FEC 3/4", mode: "DAB+" }] },
+                    { id: 102, nombre: "Peña Cabarga DAB+", subnodo: "SANTANDER", lat: 43.3644, lon: -3.8119, alturaM: 185, potenciaW: 480, gananciaDb: 8.6, dial: "12B", pi: "D1C1", rt: "CANTABRIA DAB+", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.08, factorMultitrayecto: 0.16, perdidaTerreno: 1.2, perdidaUrbana: 0.9, perdidaMontaña: 1.8, mux: "M1", ensemble: "ENSEMBLE 1", servicio: "CANTABRIA DAB+", bitrate: "128 kbps", fec: "FEC 3/4", mode: "DAB+", emisoras: [{ nombre: "Cantabria DAB+", rt: "CANTABRIA DAB+", bitrate: "128 kbps", fec: "FEC 3/4", mode: "DAB+" }, { nombre: "Cantabria Info", rt: "CANTABRIA INFO", bitrate: "96 kbps", fec: "FEC 1/2", mode: "DAB+" }, { nombre: "Cantabria Clásica", rt: "CANTABRIA CLÁSICA", bitrate: "112 kbps", fec: "FEC 3/4", mode: "DAB+" }] }
+                ]
+            },
+            "DABBURGOS": {
+                pty: "PTY: DIGITAL",
+                streamUrl: "https://stream.zeno.fm/rub12huqwj7tv",
+                antenas: [
+                    { id: 103, nombre: "Burgos DAB+", subnodo: "BURGOS", lat: 42.3439, lon: -3.7018, alturaM: 135, potenciaW: 500, gananciaDb: 8.1, dial: "11D", pi: "D2B1", rt: "BURGOS DAB+", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.04, factorMultitrayecto: 0.19, perdidaTerreno: 1.3, perdidaUrbana: 1.0, perdidaMontaña: 2.0, mux: "M2", ensemble: "ENSEMBLE 2", servicio: "BURGOS DAB+", bitrate: "192 kbps", fec: "FEC 1/2", mode: "DAB+", emisoras: [{ nombre: "NEXO FM", rt: "BURGOS DAB+", bitrate: "192 kbps", fec: "FEC 1/2", mode: "DAB+" }, { nombre: "Burgos Música", rt: "BURGOS MÚSICA", bitrate: "160 kbps", fec: "FEC 3/4", mode: "DAB+" }] },
+                    { id: 104, nombre: "Burgos Sur DAB+", subnodo: "BURGOS", lat: 42.3300, lon: -3.6800, alturaM: 120, potenciaW: 430, gananciaDb: 7.9, dial: "11D", pi: "D2B1", rt: "BURGOS DAB+", tipo: "repetidor", polarizacion: "H", apertura: "90°", eficiencia: 1.02, factorMultitrayecto: 0.21, perdidaTerreno: 1.5, perdidaUrbana: 1.2, perdidaMontaña: 2.4, mux: "M2", ensemble: "ENSEMBLE 2", servicio: "BURGOS DAB+", bitrate: "192 kbps", fec: "FEC 1/2", mode: "DAB+", emisoras: [{ nombre: "Burgos DAB+", rt: "BURGOS DAB+", bitrate: "192 kbps", fec: "FEC 1/2", mode: "DAB+" }, { nombre: "Burgos Música", rt: "BURGOS MÚSICA", bitrate: "160 kbps", fec: "FEC 3/4", mode: "DAB+" }] }
+                ]
+            },
+            "DABALAVA": {
+                pty: "PTY: DIGITAL",
+                streamUrl: "https://stream.zeno.fm/3nq9x2p3f8uv",
+                antenas: [
+                    { id: 105, nombre: "Álava DAB+", subnodo: "ALAVA/TREVIÑO", lat: 42.7231, lon: -2.7486, alturaM: 130, potenciaW: 460, gananciaDb: 8.0, dial: "10C", pi: "D3A1", rt: "ALAVA DAB+", tipo: "repetidor", polarizacion: "V", apertura: "omni", eficiencia: 1.03, factorMultitrayecto: 0.2, perdidaTerreno: 1.4, perdidaUrbana: 1.1, perdidaMontaña: 2.1, mux: "M3", ensemble: "ENSEMBLE 3", servicio: "ÁLAVA DAB+", bitrate: "160 kbps", fec: "FEC 3/4", mode: "DAB+", emisoras: [{ nombre: "Álava DAB+", rt: "ÁLAVA DAB+", bitrate: "160 kbps", fec: "FEC 3/4", mode: "DAB+" }, { nombre: "Álava Noticias", rt: "ÁLAVA NOTICIAS", bitrate: "128 kbps", fec: "FEC 1/2", mode: "DAB+" }] }
+                ]
+            }
+        };
+
+        function getBaseDatosActual() {
+            return modoReceptor === 'DAB' ? baseDatosDAB : baseDatosEmisoras;
+        }
+
+        function getServiciosDeAntena(antena) {
+            if (Array.isArray(antena?.emisoras) && antena.emisoras.length) {
+                return antena.emisoras;
+            }
+            return [{
+                nombre: antena?.servicio || antena?.rt || 'DAB+',
+                rt: antena?.rt || antena?.servicio || 'DAB+',
+                bitrate: antena?.bitrate || '---',
+                fec: antena?.fec || '---',
+                mode: antena?.mode || 'DAB+'
+            }];
+        }
+
+        function actualizarValoresSliders() {
+            const alturaSlider = document.getElementById('slider-altura');
+            const potenciaSlider = document.getElementById('slider-potencia');
+            const gananciaSlider = document.getElementById('slider-ganancia');
+            const labelAltura = document.getElementById('label-altura');
+            const labelPotencia = document.getElementById('label-potencia');
+            const labelGanancia = document.getElementById('label-ganancia');
+            if (!alturaSlider || !potenciaSlider || !gananciaSlider || !labelAltura || !labelPotencia || !labelGanancia) return;
+
+            const antena = antenaSintonizada || getBaseDatosActual()[emisoraActual]?.antenas?.[0];
+            if (!antena) return;
+
+            alturaSlider.value = antena.alturaM;
+            potenciaSlider.value = antena.potenciaW;
+            gananciaSlider.value = antena.gananciaDb;
+            labelAltura.innerText = `${antena.alturaM} m`;
+            labelPotencia.innerText = `${antena.potenciaW} W`;
+            labelGanancia.innerText = `${antena.gananciaDb.toFixed(1)} dB`;
+        }
+
+        function aplicarAjusteAntena() {
+            const alturaSlider = document.getElementById('slider-altura');
+            const potenciaSlider = document.getElementById('slider-potencia');
+            const gananciaSlider = document.getElementById('slider-ganancia');
+            const labelAltura = document.getElementById('label-altura');
+            const labelPotencia = document.getElementById('label-potencia');
+            const labelGanancia = document.getElementById('label-ganancia');
+            if (!alturaSlider || !potenciaSlider || !gananciaSlider || !labelAltura || !labelPotencia || !labelGanancia) return;
+
+            let antena = antenaSintonizada || getBaseDatosActual()[emisoraActual]?.antenas?.[0];
+            if (!antena) return;
+            if (!antenaSintonizada) antenaSintonizada = antena;
+
+            antena.alturaM = Number(alturaSlider.value);
+            antena.potenciaW = Number(potenciaSlider.value);
+            antena.gananciaDb = Number(gananciaSlider.value);
+            labelAltura.innerText = `${antena.alturaM} m`;
+            labelPotencia.innerText = `${antena.potenciaW} W`;
+            labelGanancia.innerText = `${antena.gananciaDb.toFixed(1)} dB`;
+
+            if (modoEngineer) actualizarEngineerInfo();
+            renderizarInfraestructuraMapa();
+            if (radioEncendida) agregarHistorial(`Ajuste técnico: ${antena.alturaM}m / ${antena.potenciaW}W / ${antena.gananciaDb.toFixed(1)}dB`);
+        }
+
+        function cargarSelectorAntenaManual() {
+            const selector = document.getElementById('select-antenna-manual');
+            if (!selector) return;
+            selector.innerHTML = '';
+            const antenas = getBaseDatosActual()[emisoraActual]?.antenas || [];
+            antenas.forEach((ant) => {
+                const opcion = document.createElement('option');
+                opcion.value = ant.id;
+                opcion.innerText = `${ant.dial} · ${ant.subnodo} · ${ant.nombre}`;
+                opcion.selected = antenaSintonizada?.id === ant.id;
+                selector.appendChild(opcion);
+            });
+            if (antenaSintonizada && selector.value !== String(antenaSintonizada.id)) {
+                selector.value = String(antenaSintonizada.id);
+            }
+        }
+
+        function seleccionarAntenaManual(id) {
+            autoAF = false;
+            document.getElementById('btn-autoaf')?.classList.remove('active');
+            const antenas = getBaseDatosActual()[emisoraActual]?.antenas || [];
+            const seleccionada = antenas.find((ant) => String(ant.id) === String(id));
+            if (seleccionada) {
+                antenaSintonizada = seleccionada;
+                actualizarComponentesRDS(seleccionada);
+                actualizarValoresSliders();
+                agregarHistorial(`Manual: ${seleccionada.nombre} (${seleccionada.dial})`);
+                analizarMatrizAF();
+            }
+        }
+
+        function toggleEngineerMode() {
+            modoEngineer = !modoEngineer;
+            document.getElementById('engineer-panel').style.display = modoEngineer ? 'block' : 'none';
+            document.getElementById('btn-engineer-mode')?.classList.toggle('active', modoEngineer);
+            if (modoEngineer) {
+                actualizarEngineerInfo();
+            }
+        }
+
+        function toggleAutoAF() {
+            autoAF = !autoAF;
+            document.getElementById('btn-autoaf')?.classList.toggle('active', autoAF);
+            if (autoAF) {
+                agregarHistorial('Auto AF habilitado');
+                if (radioEncendida) analizarMatrizAF();
+            } else {
+                agregarHistorial('Auto AF deshabilitado');
+            }
+        }
+
+        function actualizarEngineerInfo() {
+            const info = document.getElementById('engineer-info');
+            if (!info) return;
+            if (!antenaSintonizada) {
+                info.innerHTML = 'No hay antena sintonizada.';
+                return;
+            }
+            const alcance = calcularAlcanceNodo(antenaSintonizada);
+            const erp = calcularERP(antenaSintonizada);
+            const frecuencia = calcularFrecuenciaMhz(antenaSintonizada).toFixed(1);
+            info.innerHTML = `
+                <strong>Antena:</strong> ${antenaSintonizada.nombre}<br>
+                <strong>Frecuencia:</strong> ${frecuencia} MHz<br>
+                <strong>ERP:</strong> ${formatearERP(erp)}<br>
+                <strong>Altura:</strong> ${antenaSintonizada.alturaM} m<br>
+                <strong>Potencia:</strong> ${antenaSintonizada.potenciaW} W<br>
+                <strong>Ganancia:</strong> ${antenaSintonizada.gananciaDb.toFixed(1)} dB<br>
+                <strong>Tipo:</strong> ${antenaSintonizada.tipo || 'omni'} / ${antenaSintonizada.apertura || 'omni'}<br>
+                <strong>Pérdidas:</strong> terreno ${antenaSintonizada.perdidaTerreno}, urbana ${antenaSintonizada.perdidaUrbana}, montaña ${antenaSintonizada.perdidaMontaña}<br>
+                <strong>Alcance calculado:</strong> ${alcance} km
+            `;
+        }
+
+        function agregarHistorial(evento) {
+            const historial = document.getElementById('antenna-history');
+            if (!historial) return;
+            const momento = new Date().toLocaleTimeString();
+            historialConmutaciones.unshift(`${momento} · ${evento}`);
+            if (historialConmutaciones.length > 8) historialConmutaciones.pop();
+            historial.innerHTML = historialConmutaciones.map((item) => `<div>${item}</div>`).join('');
+        }
+
+        function calcularFrecuenciaMhz(antena) {
+            const dial = String(antena?.dial || '').replace(',', '.').match(/[0-9]+(\.[0-9]+)?/);
+            if (!dial) return 100;
+            return Number(dial[0]) || 100;
+        }
+
+        function formatearERP(erp) {
+            if (erp >= 1000) {
+                return `${(erp / 1000).toFixed(1)} kW`;
+            }
+            return `${Math.round(erp)} W`;
+        }
+
+        function calcularERP(antena) {
+            const potenciaW = Math.max(0.001, Number(antena?.potenciaW ?? 100));
+            const gananciaDb = Number(antena?.gananciaDb ?? 6);
+            const eficiencia = Math.max(0.8, Number(antena?.eficiencia ?? 1));
+            return potenciaW * Math.pow(10, gananciaDb / 10) * eficiencia;
+        }
+
+        // ==================================================================
+        //  RF · Modelo profesional de propagación VHF (FM/DAB banda III)
+        //  Basado en: ITU-R P.1546-6 (field strength), ITU-R P.525 (FSPL),
+        //  Egli/Okumura-Hata para clutter móvil, umbrales EBU Tech 3348.
+        //  Todas las magnitudes son físicas: dBm, dBμV/m, dB, km, m, W.
+        // ==================================================================
+        const RF = (() => {
+            const c = 299792458;                 // m/s
+            const H_RX = 1.5;                    // altura antena receptor coche (m)
+            const G_RX_DB = -2;                  // ganancia dipolo látigo coche (dBi)
+            const NOISE_FLOOR_DBM = -113;        // ruido térmico + NF 8 dB en 200 kHz FM
+            const NOISE_FLOOR_DAB = -100;        // ruido + NF en 1.5 MHz DAB
+            // Umbrales EBU Tech 3348 (FM móvil) y ETSI EN 300 401 (DAB):
+            //   Primaria estéreo urbana ≥ 74 dBμV/m
+            //   Secundaria estéreo rural ≥ 54 dBμV/m
+            //   Franja mono usable      ≥ 48 dBμV/m
+            const TIER = { primaria: 74, secundaria: 54, franja: 48 };
+
+            const freqMhz = (a) => {
+                const m = String(a?.dial || '').replace(',', '.').match(/[0-9]+(\.[0-9]+)?/);
+                return m ? Math.max(30, Number(m[0])) : 100;
+            };
+
+            const eirpDbm = (a) => {
+                const pW = Math.max(0.001, Number(a?.potenciaW ?? 100));
+                const gDb = Number(a?.gananciaDb ?? 6);
+                const eta = Math.max(0.5, Number(a?.eficiencia ?? 1));
+                // ERP (dBW) → EIRP (dBm): +30 dBm y +2.15 dB (dipolo→isotrópico)
+                return 10 * Math.log10(pW) + 30 + gDb + 2.15 + 10 * Math.log10(eta);
+            };
+
+            // Horizonte de radio con refracción atmosférica estándar (k = 4/3)
+            const horizonteKm = (h_tx) =>
+                4.12 * (Math.sqrt(Math.max(1, h_tx)) + Math.sqrt(H_RX));
+
+            // Radio de la primera zona de Fresnel a mitad de trayecto (m)
+            const fresnel1M = (dKm, fMhz) => {
+                const d_m = dKm * 1000;
+                const lambda = c / (fMhz * 1e6);
+                return 0.5 * Math.sqrt(lambda * d_m);
+            };
+
+            // Índice de clutter combinado (0..1) derivado de la ficha de la antena
+            const clutterIndex = (a) => {
+                const t = Number(a?.perdidaTerreno   ?? 1);
+                const u = Number(a?.perdidaUrbana    ?? 1);
+                const m = Number(a?.perdidaMontaña   ?? 1);
+                const mp = Number(a?.factorMultitrayecto ?? 0.3);
+                return Math.min(1, (t * 0.20 + u * 0.25 + m * 0.35 + mp * 0.6) / 3);
+            };
+
+            // Corrección Okumura-Hata para altura efectiva del TX
+            const alturaCorreccionDb = (h_tx, fMhz) => {
+                const a_hr = (1.1 * Math.log10(fMhz) - 0.7) * H_RX - (1.56 * Math.log10(fMhz) - 0.8);
+                const heightGain = 13.82 * Math.log10(Math.max(1, h_tx));
+                return heightGain + a_hr;
+            };
+
+            // Pérdida total en trayecto (dB) a distancia d
+            const pathLossDb = (a, dKm) => {
+                const f = freqMhz(a);
+                const d = Math.max(0.05, dKm);
+                const h_tx = Math.max(3, Number(a?.alturaM ?? 80));
+
+                // FSPL a d0=1 km:  32.45 + 20·log10(f_MHz)
+                const L0 = 32.45 + 20 * Math.log10(f);
+
+                // Exponente de pérdida n según clutter (rural 3.0 → montañoso 4.2)
+                const n = 3.0 + Math.min(1.2, clutterIndex(a) * 1.4);
+
+                // Log-distancia
+                const Lpath = L0 + 10 * n * Math.log10(d);
+
+                // Correcciones ambientales explícitas (dB)
+                const Lterr  = Number(a?.perdidaTerreno   ?? 0) * 1.8;
+                const Lurb   = Number(a?.perdidaUrbana    ?? 0) * 2.6;
+                const Lmont  = Number(a?.perdidaMontaña   ?? 0) * 5.2;
+                const Lmulti = Number(a?.factorMultitrayecto ?? 0) * 3.4;
+
+                // Bonificación por altura efectiva del TX (Okumura-Hata simplif.)
+                const Ghgt = alturaCorreccionDb(h_tx, f) - 13.82 * Math.log10(30);
+
+                // Difracción troposférica sobre el horizonte de radio: la señal
+                // decae MUY rápido (≈ 25 dB por octava de distancia sobre horizonte).
+                // ITU-R P.526 knife-edge / P.1812 tras el horizonte.
+                const hor = horizonteKm(h_tx);
+                const Ldiff = d > hor ? 25 * Math.log2(d / hor) + 6 : 0;
+
+                return Lpath + Lterr + Lurb + Lmont + Lmulti + Ldiff - Ghgt;
+            };
+
+
+            // Nivel recibido en el móvil (dBm)
+            const rssiDbm = (a, dKm) => eirpDbm(a) - pathLossDb(a, dKm) + G_RX_DB;
+
+            // Campo eléctrico E (dBμV/m) — magnitud oficial de planificación:
+            //   E (dBμV/m) = P_rx (dBm) + 20·log10(f_MHz) + 77.2
+            const fieldStrengthDbuV = (a, dKm) =>
+                rssiDbm(a, dKm) + 20 * Math.log10(freqMhz(a)) + 77.2;
+
+            // Relación señal/ruido (dB)
+            const snrDb = (a, dKm, esDab = false) =>
+                rssiDbm(a, dKm) - (esDab ? NOISE_FLOOR_DAB : NOISE_FLOOR_DBM);
+
+            // Alcances (km) para cada tier resolviendo E(d) = umbral
+            const rangeForFieldKm = (a, umbralDbuV) => {
+                // Búsqueda binaria en distancia (0.1 km ... horizonte)
+                const hor = horizonteKm(Math.max(3, Number(a?.alturaM ?? 80)));
+                let lo = 0.1, hi = hor, mid = 0;
+                for (let i = 0; i < 26; i += 1) {
+                    mid = (lo + hi) / 2;
+                    const E = fieldStrengthDbuV(a, mid);
+                    if (E > umbralDbuV) lo = mid; else hi = mid;
+                }
+                return Math.max(0.1, Math.min(hor, mid));
+            };
+
+            const tiers = (a) => ({
+                primaria:   rangeForFieldKm(a, TIER.primaria),
+                secundaria: rangeForFieldKm(a, TIER.secundaria),
+                franja:     rangeForFieldKm(a, TIER.franja),
+                horizonte:  horizonteKm(Math.max(3, Number(a?.alturaM ?? 80)))
+            });
+
+            // Zona de Fresnel despejada respecto a rugosidad del terreno
+            const fresnelClearancePct = (a, dKm) => {
+                const rF = fresnel1M(dKm, freqMhz(a));
+                const rugosidad = 4 + Number(a?.perdidaMontaña ?? 0) * 6; // m
+                return Math.max(0, Math.min(100, (1 - rugosidad / (rF || 1)) * 100));
+            };
+
+            // Área de cobertura (km²) aproximada a partir del alcance secundario
+            const coverageAreaKm2 = (dKm) => Math.PI * dKm * dKm * 0.72; // 0.72: correc. por sombras
+
+            // Calidad global 0..1 mapeando E (dBμV/m) a [48..90]
+            const quality01 = (a, dKm) => {
+                const E = fieldStrengthDbuV(a, dKm);
+                return Math.max(0, Math.min(1, (E - 48) / 42));
+            };
+
+            // Clasificación textual
+            const classify = (E) => {
+                if (E >= 74) return { tier: 'Primaria',   color: '#22c55e' };
+                if (E >= 60) return { tier: 'Secundaria', color: '#eab308' };
+                if (E >= 48) return { tier: 'Franja',     color: '#fb923c' };
+                if (E >= 40) return { tier: 'Marginal',   color: '#f87171' };
+                return          { tier: 'Fuera',      color: '#64748b' };
+            };
+
+            return {
+                TIER, H_RX,
+                freqMhz, eirpDbm, horizonteKm, fresnel1M, fresnelClearancePct,
+                pathLossDb, rssiDbm, fieldStrengthDbuV, snrDb,
+                rangeForFieldKm, tiers, coverageAreaKm2, quality01, classify,
+                noiseFloor: (esDab) => esDab ? NOISE_FLOOR_DAB : NOISE_FLOOR_DBM
+            };
+        })();
+
+        // === Shims compatibles con el código previo =====================
+        function calcularAlcanceNodo(antena) {
+            // "Alcance" clásico = borde de cobertura secundaria (E ≥ 54 dBμV/m)
+            return Number(RF.tiers(antena).secundaria.toFixed(1));
+        }
+
+        function estimarSeñalReal(antena, distanciaKm) {
+            if (distanciaKm <= 0.05) return 1;
+            // Mapea RSSI [-105..-55] dBm → [-1..1]  (0 en umbral ≈ -85 dBm)
+            const p = RF.rssiDbm(antena, distanciaKm);
+            return Math.max(-1, Math.min(1, (p + 85) / 20));
+        }
+
+
+        function inicializarMapa() {
+            let capaMapa = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
+            map = L.map('map-container', { center: [42.8000, -3.6000], zoom: 7, layers: [capaMapa] });
+
+            const contenedorMapa = document.getElementById('map-container');
+            if (contenedorMapa) {
+                const leyendaExistente = contenedorMapa.querySelector('.map-legend');
+                if (leyendaExistente) leyendaExistente.remove();
+                const leyenda = document.createElement('div');
+                leyenda.className = 'map-legend';
+                leyenda.innerHTML = `
+                    <div class="map-legend-title">Cobertura (ITU-R P.1546)</div>
+                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#22c55e"></span>Primaria &ge; 74 dBμV/m</div>
+                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#eab308"></span>Secundaria &ge; 54 dBμV/m</div>
+                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#fb923c"></span>Franja mono &ge; 48 dBμV/m</div>
+                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#0ea5e9"></span>Nodo sintonizado</div>
+                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#64748b"></span>Otras estaciones</div>
+                `;
+
+                contenedorMapa.appendChild(leyenda);
+            }
+
+            cocheMarker = L.marker([coordenadasCoche.lat, coordenadasCoche.lon], { draggable: true }).addTo(map);
+            
+            cocheMarker.on('drag', function () {
+                let coords = cocheMarker.getLatLng();
+                coordenadasCoche.lat = coords.lat; coordenadasCoche.lon = coords.lng;
+                document.getElementById('gps-lock').innerText = "PROBANDO MANUAL (DESLIZAR)";
+                document.getElementById('gps-coords').innerText = `LAT: ${coords.lat.toFixed(4)} | LON: ${coords.lng.toFixed(4)}`;
+                analizarMatrizAF();
+            });
+            
+            activarRastreoGPSReal();
+            renderizarInfraestructuraMapa();
+        }
+
+        function activarRastreoGPSReal() {
+            if ("geolocation" in navigator) {
+                watchGpsId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        coordenadasCoche.lat = position.coords.latitude;
+                        coordenadasCoche.lon = position.coords.longitude;
+                        
+                        document.getElementById('gps-lock').innerText = "GPS LIVE CONECTADO";
+                        document.getElementById('gps-coords').innerText = `LAT: ${coordenadasCoche.lat.toFixed(4)} | LON: ${coordenadasCoche.lon.toFixed(4)}`;
+                        
+                        cocheMarker.setLatLng([coordenadasCoche.lat, coordenadasCoche.lon]);
+                        map.setView([coordenadasCoche.lat, coordenadasCoche.lon]);
+                        
+                        analizarMatrizAF();
+                    },
+                    (error) => {
+                        document.getElementById('gps-lock').innerText = "GPS EMULADO (MUEVE EL COCHE)";
+                        document.getElementById('gps-coords').innerText = `LAT: ${coordenadasCoche.lat.toFixed(4)} | LON: ${coordenadasCoche.lon.toFixed(4)}`;
+                        analizarMatrizAF();
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                document.getElementById('gps-lock').innerText = "GPS NO SOPORTADO";
+                analizarMatrizAF();
+            }
+        }
+
+        // Historial de señal (últimos 60 samples ≈ 30 s a 500 ms)
+        const signalHistory = [];
+        const SIGNAL_HISTORY_MAX = 60;
+
+        function pushSignalSample(rssiDbm) {
+            signalHistory.push({ t: Date.now(), rssi: rssiDbm });
+            if (signalHistory.length > SIGNAL_HISTORY_MAX) signalHistory.shift();
+            const live = document.getElementById('lbl-rssi-live');
+            if (live) live.innerText = `${rssiDbm.toFixed(1)} dBm`;
+            dibujarSparklineSeñal();
+        }
+
+        function getAntenasVisiblesEnMapa() {
+            const baseDatos = getBaseDatosActual();
+            const emisora = baseDatos?.[emisoraActual];
+            return Array.isArray(emisora?.antenas) ? emisora.antenas : [];
+        }
+
+
+        function dibujarSparklineSeñal() {
+            const canvas = document.getElementById('signal-history-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
+            const H = canvas.height = 70 * (window.devicePixelRatio || 1);
+            ctx.clearRect(0, 0, W, H);
+
+            // Ejes: -110 dBm abajo, -50 dBm arriba
+            const yFor = (dbm) => H - ((Math.max(-110, Math.min(-50, dbm)) + 110) / 60) * H;
+
+            // Zonas de calidad
+            const paint = (dbmTop, dbmBot, color) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(0, yFor(dbmTop), W, yFor(dbmBot) - yFor(dbmTop));
+            };
+            paint(-50, -75,  'rgba(34,197,94,0.06)');    // excelente
+            paint(-75, -90,  'rgba(234,179,8,0.06)');    // aceptable
+            paint(-90, -110, 'rgba(239,68,68,0.06)');    // marginal/perdida
+
+            if (signalHistory.length < 2) return;
+            ctx.beginPath();
+            signalHistory.forEach((s, i) => {
+                const x = (i / (SIGNAL_HISTORY_MAX - 1)) * W;
+                const y = yFor(s.rssi);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            const last = signalHistory[signalHistory.length - 1].rssi;
+            ctx.strokeStyle = last >= -80 ? '#22c55e' : last >= -92 ? '#eab308' : '#ef4444';
+            ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+            ctx.stroke();
+        }
+
+        function actualizarResumenEstacion() {
+            const resumen = document.getElementById('station-summary');
+            const alcanceMaxEl = document.getElementById('alcance-max');
+            const alcanceMetaEl = document.getElementById('alcance-meta');
+            if (!resumen) return;
+
+            const baseDatos = getBaseDatosActual();
+            const antenas = baseDatos[emisoraActual]?.antenas || [];
+            if (!antenas.length) {
+                resumen.innerHTML = `<span class="chip">Sin nodos</span>`;
+                return;
+            }
+
+            // Best-server: antena con mayor RSSI en la posición actual
+            const conMetrics = antenas.map(a => {
+                const d = calcularDistanciaKm(coordenadasCoche.lat, coordenadasCoche.lon, a.lat, a.lon);
+                return { a, d, rssi: RF.rssiDbm(a, d), e: RF.fieldStrengthDbuV(a, d), snr: RF.snrDb(a, d, modoReceptor === 'DAB') };
+            }).sort((x, y) => y.rssi - x.rssi);
+
+            const best = conMetrics[0];
+            const second = conMetrics[1];
+            const tiersBest = RF.tiers(best.a);
+            const clase = RF.classify(best.e);
+            const fresnel = RF.fresnelClearancePct(best.a, best.d);
+            const areaBest = RF.coverageAreaKm2(tiersBest.secundaria);
+            const horizonteBest = tiersBest.horizonte;
+
+            const coberturaMax = Math.round(Math.max(...antenas.map(a => RF.tiers(a).secundaria)));
+            const nombreModo = modoReceptor === 'DAB' ? 'DAB+' : 'FM';
+
+            resumen.innerHTML = `
+                <span class="chip">${radioEncendida ? 'En directo' : 'Lista'}</span>
+                <span class="chip secondary">${antenas.length} nodos</span>
+                <span class="chip">${nombreModo} · Sec ${coberturaMax} km</span>
+                <span class="chip secondary">Best: ${best.a.subnodo}</span>
+            `;
+
+            if (alcanceMaxEl) alcanceMaxEl.innerText = `${coberturaMax} km`;
+            if (alcanceMetaEl) alcanceMetaEl.innerText = `${best.a.potenciaW} W · ${best.a.alturaM} m`;
+
+            const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+            const setHtml = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
+
+            setTxt('lbl-efield', `${best.e.toFixed(1)} dBμV/m`);
+            setTxt('lbl-snr', `${best.snr.toFixed(1)} dB`);
+            const tierKey = clase.tier.toLowerCase();
+            setHtml('lbl-clase', `<span class="tier-chip" data-tier="${tierKey}">${clase.tier}</span>`);
+
+            // Handover: si second supera a best por ≥ 3 dB en RSSI, aviso
+            let bestTxt = `${best.a.subnodo} · ${best.rssi.toFixed(0)} dBm`;
+            if (second && (second.rssi - best.rssi) > -3 && second.a.id !== best.a.id) {
+                bestTxt += `  →  handover a ${second.a.subnodo}`;
+            }
+            setTxt('lbl-bestserver', bestTxt);
+            setTxt('lbl-fresnel', `${fresnel.toFixed(0)} % despejada`);
+            setTxt('lbl-area', `${areaBest.toFixed(0)} km² · horiz. ${horizonteBest.toFixed(0)} km`);
+
+            pushSignalSample(best.rssi);
+        }
+
+
+        function tieneCoberturaEnPosicion(nombreEmisora) {
+            const baseDatos = getBaseDatosActual();
+            const emisora = baseDatos[nombreEmisora];
+            if (!emisora) return false;
+
+            return emisora.antenas.some((antena) => {
+                const alcance = calcularAlcanceNodo(antena);
+                const distancia = calcularDistanciaKm(coordenadasCoche.lat, coordenadasCoche.lon, antena.lat, antena.lon);
+                return distancia <= alcance;
+            });
+        }
+
+        function actualizarListaEmisorasDisponibles() {
+            const contenedor = document.getElementById('station-list-infotainment');
+            if (contenedor) {
+                const botones = Array.from(contenedor.querySelectorAll('.station-list-item'));
+                const baseDatos = getBaseDatosActual();
+                const emisorasDisponibles = Object.keys(baseDatos).filter((nombre) => tieneCoberturaEnPosicion(nombre));
+
+                botones.forEach((boton) => {
+                    const visible = emisorasDisponibles.includes(boton.dataset.station);
+                    boton.style.display = visible ? 'flex' : 'none';
+                    boton.classList.toggle('active', boton.dataset.station === emisoraActual);
+                });
+
+                // No cambiar automáticamente de emisora cuando el coche entra en una zona sin señal.
+                // El receptor mantiene la emisora actual y muestra el estado de falta de cobertura.
+            }
+
+            const contenedorDab = document.getElementById('dab-section');
+            if (contenedorDab) {
+                const botonesDab = Array.from(contenedorDab.querySelectorAll('.dab-service-btn'));
+                const baseDatosDab = baseDatosDAB;
+                const emisorasDisponiblesDab = Object.keys(baseDatosDab).filter((nombre) => tieneCoberturaEnPosicion(nombre));
+
+                botonesDab.forEach((boton) => {
+                    const visible = emisorasDisponiblesDab.includes(boton.dataset.emisora);
+                    boton.style.display = visible ? 'block' : 'none';
+                    boton.classList.toggle('active', boton.dataset.emisora === emisoraActual && modoReceptor === 'DAB');
+                });
+            }
+        }
+
+        function centrarMapa() {
+            if (!map) return;
+            map.setView([coordenadasCoche.lat, coordenadasCoche.lon], 8);
+        }
+
+        function redimensionarMapa() {
+            if (!map) return;
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize({ pan: false });
+                    if (cocheMarker) {
+                        map.setView([coordenadasCoche.lat, coordenadasCoche.lon], map.getZoom(), { animate: false });
+                    }
+                }
+            }, 120);
+        }
+
+        function activarModoInfotainment() {
+            modoVista = 'infotainment';
+            document.querySelector('.infotainment-screen').classList.add('view-infotainment');
+            document.getElementById('btn-infotainment').classList.add('active');
+            document.getElementById('btn-panel').classList.remove('active');
+            setTimeout(() => redimensionarMapa(), 200);
+        }
+
+        function activarModoPanel() {
+            modoVista = 'panel';
+            document.querySelector('.infotainment-screen').classList.remove('view-infotainment');
+            document.getElementById('btn-panel').classList.add('active');
+            document.getElementById('btn-infotainment').classList.remove('active');
+            setTimeout(() => redimensionarMapa(), 200);
+        }
+
+        function activarPestanaPanel(nombre) {
+            document.querySelectorAll('.panel-tab').forEach((btn) => btn.classList.toggle('active', btn.id === `tab-btn-${nombre}`));
+            document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.toggle('active', pane.id === `panel-${nombre}`));
+            setTimeout(() => redimensionarMapa(), 200);
+        }
+
+        // Forma de cobertura irregular: modela sombras de crestas montañosas
+        // reales por azimut. Cada antena tiene "cordilleras virtuales" (3-4
+        // sectores fijos derivados de su id/lat) que atenúan fuertemente la
+        // propagación en esas direcciones. El resto sigue variación fina por
+        // difracción/multitrayecto.
+        function generarFormaCobertura(antena, alcanceKm) {
+            const puntos = [];
+            const pasos = 128;
+            const id = Number(antena?.id) || 1;
+            const seed = (id * 9301 + Math.floor(antena.lat * 100) * 49297) % 233280;
+            const rnd = (k) => {
+                const x = Math.sin(seed + k * 12.9898) * 43758.5453;
+                return x - Math.floor(x);
+            };
+
+            const montana = Number(antena?.perdidaMontaña ?? 0);
+            const terreno = Number(antena?.perdidaTerreno ?? 0);
+            const urbana  = Number(antena?.perdidaUrbana  ?? 0);
+            const tipo    = String(antena?.tipo || 'omni').toLowerCase();
+
+            // 3-4 cordilleras virtuales que bloquean señal
+            const numRidges = 3 + Math.floor(rnd(1) * 2);
+            const ridges = [];
+            for (let k = 0; k < numRidges; k += 1) {
+                ridges.push({
+                    dir: rnd(k + 2) * Math.PI * 2,                 // azimut central
+                    width: 0.35 + rnd(k + 20) * 0.6,               // ancho angular (rad)
+                    depth: Math.min(0.75, 0.15 + montana * 0.09 + rnd(k + 40) * 0.15)
+                });
+            }
+
+            // Lóbulo principal para antenas directivas / sectoriales
+            const dirPrincipal = rnd(99) * Math.PI * 2;
+            const anchoLobulo = tipo === 'direccional' ? 1.05
+                              : tipo === 'sectorial'   ? 1.6
+                              : Math.PI;              // omni → sin recorte
+
+            for (let i = 0; i < pasos; i += 1) {
+                const ang = (i / pasos) * Math.PI * 2;
+
+                // Sombra combinada de cordilleras (producto de atenuaciones)
+                let sombraMontañas = 1;
+                for (const r of ridges) {
+                    const delta = Math.abs(Math.atan2(Math.sin(ang - r.dir), Math.cos(ang - r.dir)));
+                    if (delta < r.width) {
+                        const atten = r.depth * Math.pow(1 - delta / r.width, 1.4);
+                        sombraMontañas *= (1 - atten);
+                    }
+                }
+
+                // Sombras suaves de terreno y urbana (variación por azimut)
+                const sombraTerreno = 1 - Math.min(0.22, terreno * 0.018) * (0.5 + 0.5 * Math.sin(ang * 1.7 + id));
+                const sombraUrbana  = 1 - Math.min(0.22, urbana  * 0.014) * (0.5 + 0.5 * Math.cos(ang * 2.3 + id * 0.7));
+
+                // Difracción / multitrayecto (ruido fino)
+                const variacion = 1 + 0.05 * Math.sin(ang * 5 + id) + 0.03 * Math.cos(ang * 9 - id);
+
+                // Patrón de radiación de la antena
+                let patron = 1;
+                if (tipo !== 'omni' && tipo !== 'repetidor') {
+                    const delta = Math.abs(Math.atan2(Math.sin(ang - dirPrincipal), Math.cos(ang - dirPrincipal)));
+                    if (delta > anchoLobulo) {
+                        // Fuera del lóbulo: back-lobe fuerte reducción
+                        patron = 0.28 + 0.15 * Math.cos(delta);
+                    } else {
+                        patron = 0.75 + 0.55 * Math.pow(Math.cos((delta / anchoLobulo) * (Math.PI / 2)), 1.6);
+                    }
+                }
+
+                const factor = Math.max(0.15, sombraMontañas * sombraTerreno * sombraUrbana * variacion * patron);
+                const radioKm = alcanceKm * factor;
+
+                const radioLat = radioKm / 111.0;
+                const radioLon = radioKm / (111.0 * Math.cos((antena.lat * Math.PI) / 180));
+                puntos.push([
+                    antena.lat + Math.sin(ang) * radioLat,
+                    antena.lon + Math.cos(ang) * radioLon
+                ]);
+            }
+
+            return puntos;
+        }
+
+        // Estilos por tier (compat + usado sólo si algo antiguo lo llamara)
+        function obtenerEstiloCobertura() {
+            return { visible: true, color: '#eab308', fillColor: '#eab308', fillOpacity: 0.1, weight: 1.5 };
+        }
+
+        const TIER_STYLES = {
+            primaria:   { color: '#22c55e', fillOpacity: 0.16, weight: 1.6 },
+            secundaria: { color: '#eab308', fillOpacity: 0.10, weight: 1.3, dashArray: null },
+            franja:     { color: '#fb923c', fillOpacity: 0.05, weight: 1.0, dashArray: '4 4' }
+        };
+
+        function popupLinkBudget(ant) {
+            const f = RF.freqMhz(ant);
+            const d = calcularDistanciaKm(coordenadasCoche.lat, coordenadasCoche.lon, ant.lat, ant.lon);
+            const eirp = RF.eirpDbm(ant);
+            const L = RF.pathLossDb(ant, d);
+            const rssi = RF.rssiDbm(ant, d);
+            const E = RF.fieldStrengthDbuV(ant, d);
+            const snr = RF.snrDb(ant, d, modoReceptor === 'DAB');
+            const t = RF.tiers(ant);
+            const clase = RF.classify(E);
+            const fresnel = RF.fresnelClearancePct(ant, Math.max(0.5, d));
+            return `
+                <div class="link-budget-popup">
+                    <h4>${ant.nombre}</h4>
+                    <div style="font-size:10px; color:#64748b; margin-bottom:4px;">
+                        ${ant.dial} · ${f.toFixed(2)} MHz · ${ant.tipo || 'omni'} ${ant.apertura || ''} · pol ${ant.polarizacion || 'V'}
+                    </div>
+                    <table>
+                        <tr><td>Pt · Ganancia</td><td>${ant.potenciaW} W · ${ant.gananciaDb} dBi</td></tr>
+                        <tr><td>EIRP</td><td>${eirp.toFixed(1)} dBm</td></tr>
+                        <tr><td>Altura TX / horizonte</td><td>${ant.alturaM} m · ${t.horizonte.toFixed(0)} km</td></tr>
+                        <tr><td>Distancia al RX</td><td>${d.toFixed(2)} km</td></tr>
+                        <tr><td>Pérdida trayecto</td><td>${L.toFixed(1)} dB</td></tr>
+                        <tr><td>RSSI en RX</td><td>${rssi.toFixed(1)} dBm</td></tr>
+                        <tr><td>Campo E</td><td>${E.toFixed(1)} dBμV/m</td></tr>
+                        <tr><td>SNR</td><td>${snr.toFixed(1)} dB</td></tr>
+                        <tr><td>Fresnel despejada</td><td>${fresnel.toFixed(0)} %</td></tr>
+                        <tr><td>Alcances</td>
+                            <td>P ${t.primaria.toFixed(1)} · S ${t.secundaria.toFixed(1)} · F ${t.franja.toFixed(1)} km</td></tr>
+                        <tr><td>Clase aquí</td><td style="color:${clase.color}">${clase.tier}</td></tr>
+                    </table>
+                </div>`;
+        }
+
+        function renderizarInfraestructuraMapa() {
+            if (!map) return;
+
+            marcadoresAntenas.forEach(m => map.removeLayer(m));
+            circulosCobertura.forEach(c => map.removeLayer(c));
+            marcadoresAntenas = []; circulosCobertura = [];
+
+            const baseDatos = getBaseDatosActual();
+            const antenas = getAntenasVisiblesEnMapa();
+            const antenasActivas = new Set((baseDatos[emisoraActual]?.antenas || []).map((ant) => ant.id));
+
+            // Best-server global para resaltar
+            let bestServerId = null; let bestRssi = -999;
+            antenas.forEach(a => {
+                const d = calcularDistanciaKm(coordenadasCoche.lat, coordenadasCoche.lon, a.lat, a.lon);
+                const r = RF.rssiDbm(a, d);
+                if (r > bestRssi) { bestRssi = r; bestServerId = a.id; }
+            });
+
+            antenas.forEach(ant => {
+                const esAntenaActiva = antenasActivas.has(ant.id);
+                const esBest = ant.id === bestServerId;
+                const colorMarker = esBest ? '#0ea5e9'
+                                   : esAntenaActiva ? (modoReceptor === 'DAB' ? '#86efac' : '#c19a6b')
+                                   : '#64748b';
+                const size = esBest ? 18 : esAntenaActiva ? 14 : 11;
+                const antenaMarker = L.marker([ant.lat, ant.lon], {
+                    icon: L.divIcon({
+                        className: 'ant-node-map',
+                        html: `<div style="background:${colorMarker}; width:${size}px; height:${size}px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 8px ${colorMarker};"></div>`
+                    })
+                }).addTo(map);
+                marcadoresAntenas.push(antenaMarker);
+                antenaMarker.bindPopup(popupLinkBudget(ant), { maxWidth: 320 });
+
+                const t = RF.tiers(ant);
+
+                // Dibuja de mayor a menor para que el interior quede por encima
+                [
+                    { key: 'franja',     km: t.franja },
+                    { key: 'secundaria', km: t.secundaria },
+                    { key: 'primaria',   km: t.primaria }
+                ].forEach(({ key, km }) => {
+                    if (km < 0.4) return;
+                    const style = TIER_STYLES[key];
+                    const forma = generarFormaCobertura(ant, km);
+                    const poligono = L.polygon(forma, {
+                        color: esAntenaActiva ? style.color : '#475569',
+                        fillColor: esAntenaActiva ? style.color : '#475569',
+                        fillOpacity: esAntenaActiva ? style.fillOpacity : style.fillOpacity * 0.4,
+                        weight: style.weight,
+                        dashArray: style.dashArray || null,
+                        smoothFactor: 0.9,
+                        interactive: false
+                    }).addTo(map);
+                    circulosCobertura.push(poligono);
+                });
+            });
+            actualizarResumenEstacion();
+            cargarSelectorAntenaManual();
+            actualizarValoresSliders();
+            if (modoEngineer) actualizarEngineerInfo();
+            analizarMatrizAF();
+        }
+
+
+        function calcularDistanciaKm(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        function actualizarRdsInfoPanel(antena) {
+            const piField = document.getElementById('rds-info-pi');
+            const psField = document.getElementById('rds-info-ps');
+            const rtField = document.getElementById('rds-info-rt');
+            const tpField = document.getElementById('rds-info-tp');
+            const taField = document.getElementById('rds-info-ta');
+            if (!piField || !psField || !rtField || !tpField || !taField) return;
+
+            piField.innerText = antena?.pi || '----';
+            psField.innerText = antena?.rt ? antena.rt.substring(0, 8) : 'OFFLINE';
+            rtField.innerText = antena?.rt || '---';
+            tpField.innerText = antena?.tp ? 'SI' : document.getElementById('btn-rds-tp')?.classList.contains('active') ? 'SI' : 'NO';
+            taField.innerText = antena?.ta ? 'SI' : document.getElementById('btn-rds-ta')?.classList.contains('active') ? 'SI' : 'NO';
+        }
+
+        function toggleRdsInfo() {
+            const panel = document.getElementById('rds-info-panel');
+            if (!panel) return;
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            if (panel.style.display === 'block') {
+                actualizarRdsInfoPanel(antenaSintonizada || getBaseDatosActual()[emisoraActual]?.antenas?.[0]);
+            }
+        }
+
+        function toggleRdsFlag(flag) {
+            const button = document.getElementById(flag === 'tp' ? 'btn-rds-tp' : 'btn-rds-ta');
+            if (!button) return;
+            button.classList.toggle('active');
+            button.classList.toggle('on', button.classList.contains('active'));
+            actualizarRdsInfoPanel(antenaSintonizada || getBaseDatosActual()[emisoraActual]?.antenas?.[0]);
+        }
+
+        function aplicarAjustesAvanzados() {
+            const piInput = document.getElementById('input-rds-pi');
+            const psInput = document.getElementById('input-rds-ps');
+            const rtInput = document.getElementById('input-rds-rt');
+            if (!antenaSintonizada || !piInput || !psInput || !rtInput) return;
+            antenaSintonizada.pi = piInput.value.trim() || antenaSintonizada.pi;
+            antenaSintonizada.rt = rtInput.value.trim() || antenaSintonizada.rt;
+            antenaSintonizada.ps = psInput.value.trim() || antenaSintonizada.rt;
+            antenaSintonizada.tp = document.getElementById('btn-rds-tp')?.classList.contains('active');
+            antenaSintonizada.ta = document.getElementById('btn-rds-ta')?.classList.contains('active');
+            actualizarComponentesRDS(antenaSintonizada);
+            actualizarRdsInfoPanel(antenaSintonizada);
+            agregarHistorial(`Ajustes RDS aplicados: PI ${antenaSintonizada.pi}, RT ${antenaSintonizada.rt}`);
+        }
+
+        function actualizarMetadatosBluetoothOSeOS(antena) {
+            if ('mediaSession' in navigator && 'MediaMetadata' in window) {
+                let rdsEmisoraLocal = `${emisoraActual} ${antena.subnodo}`;
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: rdsEmisoraLocal,
+                    artist: `Dial: ${antena.dial}`,
+                    album: `RDS Activo [PI: ${antena.pi} - ${antena.nombre.split(' ')[0]}]`,
+                    artwork: [
+                        { src: 'https://placehold.co/512x512/0b0f17/ffffff?text=' + rdsEmisoraLocal, sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+            }
+        }
+
+        function analizarMatrizAF() {
+            if (!radioEncendida) return;
+            lineasMatrizRF.forEach(l => map.removeLayer(l)); lineasMatrizRF = [];
+
+            let mejorAntena = null;
+            let mejorSeñalNeta = -999;
+            let mejorAntenaEnRango = null;
+            let mejorSeñalNetaEnRango = -999;
+            let htmlLista = "";
+
+            const baseDatos = getBaseDatosActual();
+            (baseDatos[emisoraActual]?.antenas || []).forEach(ant => {
+                const alcanceReal = calcularAlcanceNodo(ant);
+                let distancia = calcularDistanciaKm(coordenadasCoche.lat, coordenadasCoche.lon, ant.lat, ant.lon);
+                let señalNeta = estimarSeñalReal(ant, distancia);
+                let colorVector = '#ef4444'; 
+                let estaSaturado = false;
+                let estaEnFading = false;
+                
+                const enCobertura = distancia <= alcanceReal;
+                if (enCobertura) {
+                    if (distancia > (alcanceReal - 0.02)) {
+                        estaEnFading = true;
+                        colorVector = '#f59e0b'; 
+                    } else {
+                        colorVector = '#10b981'; 
+                    }
+                }
+
+                if (señalNeta > mejorSeñalNeta) {
+                    mejorSeñalNeta = señalNeta;
+                    mejorAntena = ant;
+                }
+                if (enCobertura && señalNeta > mejorSeñalNetaEnRango) {
+                    mejorSeñalNetaEnRango = señalNeta;
+                    mejorAntenaEnRango = ant;
+                }
+
+                let claseTuned = "";
+                if (antenaSintonizada && antenaSintonizada.id === ant.id) {
+                    claseTuned = "tuned";
+                    if (colorVector === '#10b981') colorVector = '#0ea5e9';
+                }
+
+                let lineaRayo = L.polyline([[ant.lat, ant.lon], [coordenadasCoche.lat, coordenadasCoche.lon]], {
+                    color: colorVector, weight: (antenaSintonizada && antenaSintonizada.id === ant.id) ? 3 : 1.5
+                }).addTo(map);
+                lineasMatrizRF.push(lineaRayo);
+
+                const frecuenciaAntena = calcularFrecuenciaMhz(ant).toFixed(1);
+                const erpAntena = calcularERP(ant);
+                const erpLabel = formatearERP(erpAntena);
+                let etiquetaRF = "0% SEÑAL";
+                if (estaSaturado) etiquetaRF = "SATURADO";
+                else if (distancia <= alcanceReal) {
+                    if (estaEnFading) {
+                        let kmsDentroDelFading = distancia - (alcanceReal - 0.02);
+                        let pct = Math.round(100 - (kmsDentroDelFading * 5000));
+                        etiquetaRF = `${pct}% RF`;
+                    } else {
+                        etiquetaRF = "100% SEÑAL";
+                    }
+                }
+
+                htmlLista += `
+                    <div class="ant-item ${claseTuned}">
+                        <div><b>${ant.dial}</b> - <span style="color:#94a3b8">${ant.subnodo}</span></div>
+                        <div style="font-size:10px; color:#64748b; margin-top:2px;">${ant.tipo || 'omni'} · ${ant.polarizacion || 'V'}/${ant.apertura || 'omni'}</div>
+                        <div style="font-size:10px; color:#94a3b8; margin-top:2px;">${frecuenciaAntena} MHz · ERP ${erpLabel}</div>
+                        <div class="rssi-bar" style="color:${colorVector}; font-weight:bold;">${etiquetaRF}</div>
+                    </div>
+                `;
+
+                if (señalNeta > mejorSeñalNeta) {
+                    mejorSeñalNeta = señalNeta; mejorAntena = ant;
+                }
+            });
+
+            document.getElementById('lista-antenas-ui').innerHTML = htmlLista;
+            actualizarListaEmisorasDisponibles();
+
+            const antenaAFSeleccionada = mejorAntenaEnRango || mejorAntena;
+            let debeCambiarAF = false;
+
+            if (antenaAFSeleccionada && autoAF && !conmutandoAF) {
+                if (!antenaSintonizada) {
+                    debeCambiarAF = true;
+                } else if (antenaAFSeleccionada.id !== antenaSintonizada.id) {
+                    const distanciaActual = calcularDistanciaKm(coordenadasCoche.lat, coordenadasCoche.lon, antenaSintonizada.lat, antenaSintonizada.lon);
+                    const alcanceActual = calcularAlcanceNodo(antenaSintonizada);
+                    const señalActual = estimarSeñalReal(antenaSintonizada, distanciaActual);
+                    const enCoberturaActual = distanciaActual <= alcanceActual;
+                    const enFadingActual = enCoberturaActual && distanciaActual > (alcanceActual - 0.02);
+
+                    if (!enCoberturaActual) {
+                        debeCambiarAF = true;
+                    } else if (enFadingActual && mejorSeñalNetaEnRango > señalActual) {
+                        debeCambiarAF = true;
+                    }
+                }
+            }
+
+            if (antenaAFSeleccionada) {
+                if (debeCambiarAF) {
+                    conmutarHardwareFrecuenciaAFSeamless(antenaAFSeleccionada);
+                } else if (!autoAF && !antenaSintonizada) {
+                    antenaSintonizada = antenaAFSeleccionada;
+                    actualizarComponentesRDS(antenaAFSeleccionada);
+                }
+            }
+
+            if (antenaSintonizada && !conmutandoAF) {
+                let dFinal = calcularDistanciaKm(coordenadasCoche.lat, coordenadasCoche.lon, antenaSintonizada.lat, antenaSintonizada.lon);
+                const alcanceSintonizada = calcularAlcanceNodo(antenaSintonizada);
+                document.getElementById('lbl-distancia').innerHTML = `${dFinal.toFixed(1)} <span>km</span>`;
+                
+                if (dFinal < 1.8) {
+                    procesarFiltrosDeAudio(true, 0);
+                } else if (dFinal <= alcanceSintonizada) {
+                    if (dFinal > (alcanceSintonizada - 0.02)) {
+                        let factorFading = (dFinal - (alcanceSintonizada - 0.02)) / 0.02;
+                        procesarFiltrosDeAudio(true, factorFading);
+                    } else {
+                        procesarFiltrosDeAudio(true, 0); 
+                    }
+                } else {
+                    procesarFiltrosDeAudio(false, 1.0); 
+                }
+            }
+        }
+
+        function conmutarHardwareFrecuenciaAFSeamless(nuevaAntena) {
+            conmutandoAF = true; clearInterval(psInterval);
+            document.getElementById('rds-af-status').innerText = "SEARCH AF";
+            document.getElementById('rds-af-status').className = "af-status searching";
+            document.getElementById('rds-ps-display').innerText = "PI SEEK";
+            
+            const ahora = audioCtx ? audioCtx.currentTime : 0;
+
+            // Atenuación de hardware durante el salto de frecuencia sin añadir siseo artificial
+            if (masterGain) masterGain.gain.setValueAtTime(0.02, ahora);
+            if (noiseGain) noiseGain.gain.setValueAtTime(0.0, ahora);
+
+            setTimeout(() => {
+                antenaSintonizada = nuevaAntena; conmutandoAF = false;
+                actualizarComponentesRDS(nuevaAntena); 
+                actualizarMetadatosBluetoothOSeOS(nuevaAntena);
+                analizarMatrizAF();
+            }, 400);
+        }
+
+        function actualizarComponentesRDS(antena) {
+            const baseDatos = getBaseDatosActual();
+            const metadataBox = document.getElementById('dab-metadata');
+            const selectorBox = document.getElementById('dab-service-selector');
+            const servicios = getServiciosDeAntena(antena);
+            if (!servicioDabActual || !servicios.some((servicio) => servicio.nombre === servicioDabActual.nombre)) {
+                servicioDabActual = servicios[0];
+            }
+            document.getElementById('lbl-dial').innerText = antena.dial;
+            document.getElementById('lbl-lugar').innerText = antena.nombre;
+            document.getElementById('rds-rt-display').innerText = servicioDabActual.rt || antena.rt;
+            document.getElementById('rds-af-status').innerText = modoReceptor === 'DAB' ? 'DAB OK' : 'AF OK';
+            document.getElementById('rds-af-status').className = 'af-status ok';
+            document.getElementById('pty-display').innerText = modoReceptor === 'DAB' ? `${baseDatos[emisoraActual]?.pty || 'DAB+'} · ${servicioDabActual.mode || antena.mode || 'DAB+'}` : (baseDatos[emisoraActual]?.pty || 'FM');
+            if (metadataBox) {
+                metadataBox.style.display = modoReceptor === 'DAB' ? 'grid' : 'none';
+                document.getElementById('dab-ensemble').innerText = antena.ensemble || '---';
+                document.getElementById('dab-mux').innerText = antena.mux || '---';
+                document.getElementById('dab-service').innerText = servicioDabActual.nombre || antena.servicio || '---';
+                document.getElementById('dab-bitrate').innerText = servicioDabActual.bitrate || antena.bitrate || '---';
+                document.getElementById('dab-fec').innerText = servicioDabActual.fec || antena.fec || '---';
+                document.getElementById('dab-mode').innerText = servicioDabActual.mode || antena.mode || 'DAB+';
+            }
+            if (selectorBox) {
+                selectorBox.style.display = modoReceptor === 'DAB' && servicios.length > 1 ? 'flex' : 'none';
+                selectorBox.innerHTML = servicios.map((servicio) => `<button class="dab-service-chip ${servicio.nombre === servicioDabActual.nombre ? 'active' : ''}" onclick="cambiarServicioDab('${servicio.nombre.replace(/'/g, "\\'")}', ${JSON.stringify(antena).replace(/"/g, '&quot;')})">${servicio.nombre}</button>`).join('');
+            }
+            iniciarBucleAlternanciaPS(emisoraActual, antena.subnodo);
+        }
+
+        function cambiarServicioDab(nombreServicio, antena) {
+            const servicios = getServiciosDeAntena(antena);
+            const encontrado = servicios.find((servicio) => servicio.nombre === nombreServicio);
+            if (encontrado) {
+                servicioDabActual = encontrado;
+                actualizarComponentesRDS(antena);
+            }
+        }
+
+      function iniciarBucleAlternanciaPS(emi, subnodo) {
+    clearInterval(psInterval);
+
+    // Mostrar únicamente el nombre de la emisora
+    document.getElementById('rds-ps-display').innerText = emi;
+}
+
+        function procesarFiltrosDeAudio(enRango, factorFading) {
+            const statusLbl = document.getElementById('status');
+            const flagSt = document.getElementById('flag-st');
+            const rssiLbl = document.getElementById('lbl-rssi');
+            const receptorState = document.getElementById('lbl-receptor-state');
+            const signalValue = document.getElementById('signal-value');
+            const afStatusBox = document.getElementById('rds-af-status');
+
+            const baseDatos = getBaseDatosActual();
+            if (musica.src !== baseDatos[emisoraActual]?.streamUrl) {
+                musica.src = baseDatos[emisoraActual]?.streamUrl || '';
+                musica.play().catch(() => {});
+            }
+
+            if (!audioCtx) return;
+
+            let volUsuario = parseFloat(sliderVolumen.value);
+            let rssiText = '-- dBm';
+            let receptorText = modoReceptor === 'DAB' ? 'DAB+ ACTIVO' : 'FM ACTIVO';
+
+            if (modoReceptor === 'DAB') {
+                if (enRango) {
+                    masterGain.gain.setValueAtTime(volUsuario, audioCtx.currentTime);
+                    if (noiseGain) noiseGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                    biquadFilter.frequency.setValueAtTime(18000, audioCtx.currentTime);
+                    stereoPanner.pan.setValueAtTime(0, audioCtx.currentTime);
+                    flagSt.className = 'flag active';
+                    rssiText = `-${Math.round(50 + (factorFading * 10))} dBm`;
+                    afStatusBox.className = 'af-status ok';
+                    afStatusBox.innerText = 'DAB OK';
+                    statusLbl.innerText = `DAB+ DIGITAL ESTABLE · ${antenaSintonizada?.servicio || antenaSintonizada?.rt || 'SERVICIO'}`;
+                    statusLbl.style.color = '#38bdf8';
+                } else {
+                    masterGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                    if (noiseGain) noiseGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                    biquadFilter.frequency.setValueAtTime(12000, audioCtx.currentTime);
+                    stereoPanner.pan.setValueAtTime(0, audioCtx.currentTime);
+                    flagSt.className = 'flag';
+                    rssiText = '-110 dBm';
+                    afStatusBox.className = 'af-status';
+                    afStatusBox.innerText = 'DAB LOST';
+                    statusLbl.innerText = 'SIN SERVICIO DAB+ EN ESTA ZONA';
+                    statusLbl.style.color = '#ef4444';
+                }
+                receptorText = 'RECEPTOR DAB+';
+                if (receptorState) receptorState.innerText = receptorText;
+                if (signalValue) signalValue.innerText = rssiText;
+                return;
+            }
+
+            if (enRango) {
+                if (factorFading > 0) {
+                    const targetVol = volUsuario * (1.0 - (factorFading * 0.78));
+                    masterGain.gain.setValueAtTime(targetVol, audioCtx.currentTime);
+                    if (noiseGain) noiseGain.gain.setValueAtTime(0.1 + (factorFading * 0.22), audioCtx.currentTime);
+                    const cutOff = 15000 - (factorFading * 13000);
+                    biquadFilter.frequency.setValueAtTime(cutOff, audioCtx.currentTime);
+                    stereoPanner.pan.setValueAtTime(0, audioCtx.currentTime);
+                    flagSt.className = 'flag';
+                    rssiText = `-${Math.round(75 + (factorFading * 20))} dBm`;
+                    afStatusBox.className = 'af-status fading';
+                    afStatusBox.innerText = `FADING ${Math.round((1 - factorFading) * 100)}%`;
+                    statusLbl.innerText = 'TRAMO CRÍTICO: ALCANCE LÍMITE (RDS IMPRÓXIMO)';
+                    statusLbl.style.color = '#eab308';
+                    receptorText = 'FADING FM';
+                    document.getElementById('rds-ps-display').innerText = Math.random() > 0.4 ? (servicioDabActual?.rt || antenaSintonizada?.rt || 'RDS FAIL') : '--- ----';
+                    document.getElementById('rds-rt-display').innerText = Math.random() > 0.5 ? (antenaSintonizada?.rt || 'FM AUTO') : 'RT ERR';
+                    if (document.getElementById('rds-info-panel')?.style.display === 'block') {
+                        document.getElementById('rds-info-rt').innerText = document.getElementById('rds-rt-display').innerText;
+                    }
+                } else {
+                    masterGain.gain.setValueAtTime(volUsuario, audioCtx.currentTime);
+                    if (noiseGain) noiseGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                    biquadFilter.frequency.setValueAtTime(15000, audioCtx.currentTime);
+                    stereoPanner.pan.setValueAtTime(Math.sin(Date.now() * 0.001) * 0.1, audioCtx.currentTime);
+                    flagSt.className = 'flag active';
+                    rssiText = '-60 dBm';
+                    afStatusBox.className = 'af-status ok';
+                    afStatusBox.innerText = 'AF OK';
+                    statusLbl.innerText = 'SEÑAL COBERTURA ÓPTIMA EN ESTE REPETIDOR';
+                    statusLbl.style.color = '#10b981';
+                    receptorText = 'FM ESTABLE';
+                    document.getElementById('rds-ps-display').innerText = antenaSintonizada?.rt || 'FM ACTIVO';
+                    document.getElementById('rds-rt-display').innerText = antenaSintonizada?.rt || 'FM ACTIVO';
+                    if (document.getElementById('rds-info-panel')?.style.display === 'block') {
+                        actualizarRdsInfoPanel(antenaSintonizada);
+                    }
+                }
+            } else {
+                masterGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                if (noiseGain) noiseGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+                flagSt.className = 'flag';
+                rssiText = '-120 dBm';
+                afStatusBox.className = 'af-status';
+                afStatusBox.innerText = 'OUT';
+                statusLbl.innerText = 'MUTING AF: SIN COBERTURA EN LA ZONA';
+                statusLbl.style.color = '#ef4444';
+                receptorText = 'SIN SEÑAL';
+                document.getElementById('rds-ps-display').innerText = '----';
+                document.getElementById('rds-rt-display').innerText = 'NO RDS';
+                if (document.getElementById('rds-info-panel')?.style.display === 'block') {
+                    document.getElementById('rds-info-ps').innerText = '----';
+                    document.getElementById('rds-info-rt').innerText = 'NO RDS';
+                }
+            }
+
+            if (receptorState) receptorState.innerText = receptorText;
+            if (signalValue) signalValue.innerText = rssiText;
+            const meterFill = document.getElementById('signal-meter-fill');
+            if (meterFill) {
+                let pct = 0;
+                let parsed = 0;
+                if (rssiText.includes('+')) {
+                    pct = 100;
+                    parsed = 10;
+                } else {
+                    parsed = Number(rssiText.replace(/[^0-9\-\.]/g, ''));
+                    pct = isNaN(parsed) ? 0 : Math.min(100, Math.max(0, 100 - ((parsed + 130) * 0.7)));
+                }
+                meterFill.style.width = `${pct}%`;
+                meterFill.style.background = parsed >= -80 ? 'linear-gradient(90deg, #10b981, #38bdf8)' : 'linear-gradient(90deg, #f97316, #ef4444)';
+            }
+        }
+
+        function inicializarAudioPipeline() {
+            if (audioCtx) return;
+            
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Nodo de streaming HTML5
+            fuenteAudio = audioCtx.createMediaElementSource(musica);
+            
+            // Generador de Ruido Blanco (Siseo FM)
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+            
+            noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = noiseBuffer;
+            noiseNode.loop = true;
+            
+            noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            noiseNode.connect(noiseGain);
+            
+            // Filtros e interpoladores RF
+            biquadFilter = audioCtx.createBiquadFilter();
+            biquadFilter.type = "lowpass";
+            
+            stereoPanner = audioCtx.createStereoPanner();
+            
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(parseFloat(sliderVolumen.value), audioCtx.currentTime);
+            
+            // Analizador FFT de Espectro Real para el Ecualizador
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 32;
+            let bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            // Conexiones de la matriz de audio
+            fuenteAudio.connect(biquadFilter);
+            biquadFilter.connect(stereoPanner);
+            stereoPanner.connect(masterGain);
+            
+            // Mezclador Final (Música filtrada + Siseo de RF)
+            masterGain.connect(analyser);
+            noiseGain.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            
+            noiseNode.start();
+            actualizarRenderEqReal();
+        }
+
+        function actualizarRenderEqReal() {
+            if (!radioEncendida) {
+                eqBars.forEach(bar => bar.style.height = "2px");
+                return;
+            }
+            animationEqId = requestAnimationFrame(actualizarRenderEqReal);
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Mapeamos los datos FFT binarios directos sobre las barras CSS de la interfaz
+            for (let i = 0; i < eqBars.length; i++) {
+                let valorEspectro = dataArray[i * 2] || 0; 
+                let heightPx = (valorEspectro / 255) * 18; 
+                eqBars[i].style.height = `${Math.max(2, heightPx)}px`;
+            }
+        }
+
+        function encenderRadio() {
+            if (!radioEncendida) {
+                radioEncendida = true; btnEncender.innerText = "Apagar"; btnEncender.classList.add('on');
+                inicializarAudioPipeline(); 
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                analizarMatrizAF();
+                iniciarClockSyncRDS();
+            } else {
+                radioEncendida = false; btnEncender.innerText = "Encender"; btnEncender.classList.remove('on');
+                musica.pause(); musica.src = "";
+                if (audioCtx && noiseGain) noiseGain.gain.setValueAtTime(0, audioCtx.currentTime);
+                if (audioCtx && masterGain) masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+                cancelAnimationFrame(animationEqId);
+                eqBars.forEach(bar => bar.style.height = "2px");
+                
+                document.getElementById('rds-af-status').className = "af-status"; document.getElementById('rds-af-status').innerText = "AF OFF";
+                document.getElementById('dab-metadata').style.display = 'none';
+                clearInterval(psInterval); clearInterval(clockInterval);
+                document.getElementById('rds-ps-display').innerText = "OFFLINE";
+                document.getElementById('rds-clock').innerText = "CT SYNC: --:--:--";
+                document.getElementById('pty-display').innerText = "BLUETOOTH DYNAMIC PS LINK ACTIVE";
+                document.getElementById('lbl-dial').innerText = "---"; document.getElementById('lbl-rssi').innerText = "---";
+                document.getElementById('lbl-distancia').innerText = "---"; document.getElementById('lbl-lugar').innerText = "---";
+                lineasMatrizRF.forEach(l => map.removeLayer(l)); document.getElementById('lista-antenas-ui').innerHTML = "";
+                actualizarResumenEstacion();
+                if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
+            }
+        }
+
+        function activarModoReceptor(modo) {
+            modoReceptor = modo;
+            document.getElementById('btn-fm').classList.toggle('active', modo === 'FM');
+            document.getElementById('btn-dab').classList.toggle('active', modo === 'DAB');
+            const emisoraDefault = modo === 'DAB' ? 'DABCANTABRIA' : 'NEXOFM';
+            seleccionarEmisora(emisoraActual && getBaseDatosActual()[emisoraActual] ? emisoraActual : emisoraDefault, modo);
+        }
+
+        function seleccionarEmisora(nombreEmisora, modo = modoReceptor) {
+            const modoAnterior = modoReceptor;
+            const cambioModo = modoAnterior !== modo;
+            if (emisoraActual === nombreEmisora && !cambioModo && antenaSintonizada) return;
+            modoReceptor = modo;
+            emisoraActual = nombreEmisora; antenaSintonizada = null; servicioDabActual = null;
+            musica.pause(); musica.src = "";
+
+            const tabs = [
+                ['tab-nexofm', 'NEXOFM'],
+                ['tab-trs1', 'TRS1'],
+                ['tab-megastarfm', 'MEGASTARFM'],
+                ['tab-hitfm', 'HITFM'],
+                ['tab-cantabriarock', 'CANTABRIAROCK'],
+                ['tab-ondasur', 'ONDASUR'],
+                ['tab-nortefm', 'NORTEFM']
+            ];
+
+            tabs.forEach(([id, key]) => {
+                const tab = document.getElementById(id);
+                if (tab) tab.classList.toggle('active', nombreEmisora === key && modoReceptor === 'FM');
+            });
+
+            document.querySelectorAll('.station-list-item').forEach((boton) => {
+                boton.classList.toggle('active', boton.dataset.station === nombreEmisora && modoReceptor === 'FM');
+            });
+
+            document.querySelectorAll('.dab-service-btn').forEach((boton) => {
+                boton.classList.toggle('active', boton.dataset.emisora === nombreEmisora && modoReceptor === 'DAB');
+            });
+
+            document.getElementById('btn-fm').classList.toggle('active', modoReceptor === 'FM');
+            document.getElementById('btn-dab').classList.toggle('active', modoReceptor === 'DAB');
+
+            actualizarResumenEstacion();
+            renderizarInfraestructuraMapa();
+            actualizarListaEmisorasDisponibles();
+
+            const baseDatos = getBaseDatosActual();
+            const antenas = baseDatos[nombreEmisora]?.antenas || [];
+            if (modoReceptor === 'DAB' && antenas.length) {
+                const antenaInicial = antenas[0];
+                antenaSintonizada = antenaInicial;
+                actualizarComponentesRDS(antenaInicial);
+            } else if (modoReceptor === 'FM' && antenaSintonizada) {
+                document.getElementById('dab-metadata').style.display = 'none';
+                document.getElementById('dab-service-selector').style.display = 'none';
+            }
+        }
+
+        function iniciarClockSyncRDS() {
+            clearInterval(clockInterval);
+            clockInterval = setInterval(() => {
+                let d = new Date();
+                document.getElementById('rds-clock').innerText = `CT SYNC: ${d.toTimeString().split(' ')[0]}`;
+            }, 1000);
+        }
+
+        // Manejador del Slider de Volumen
+        sliderVolumen.addEventListener('input', (e) => {
+            let pct = Math.round(e.target.value * 100);
+            txtVolumen.innerText = `${pct}%`;
+            if (radioEncendida && masterGain) {
+                analizarMatrizAF(); // Forzamos recalculación de volumen físico y atenuación RF
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            activarModoPanel();
+            activarModoReceptor('FM');
+
+            const alturaSlider = document.getElementById('slider-altura');
+            const potenciaSlider = document.getElementById('slider-potencia');
+            const gananciaSlider = document.getElementById('slider-ganancia');
+            if (alturaSlider) alturaSlider.addEventListener('input', aplicarAjusteAntena);
+            if (potenciaSlider) potenciaSlider.addEventListener('input', aplicarAjusteAntena);
+            if (gananciaSlider) gananciaSlider.addEventListener('input', aplicarAjusteAntena);
+
+            setTimeout(() => {
+                inicializarMapa();
+            }, 120);
+
+            window.addEventListener('resize', redimensionarMapa);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) redimensionarMapa();
+            });
+        });
+    </script>
+</body>
+</html>
